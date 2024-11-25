@@ -16,7 +16,7 @@ struct LaunchListView: View {
                 if viewModel.isLoading {
                     ProgressView()
                         .scaleEffect(1.5)
-                        .tint(ThemeColors.neonBlue)
+                        .tint(ThemeColors.brightyellow)
                 } else if !viewModel.launches.isEmpty {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 20) {
@@ -33,7 +33,7 @@ struct LaunchListView: View {
                     VStack {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.largeTitle)
-                            .foregroundColor(ThemeColors.neonBlue)
+                            .foregroundColor(ThemeColors.brightyellow)
                         Text(error)
                             .foregroundColor(ThemeColors.almostWhite)
                             .multilineTextAlignment(.center)
@@ -43,7 +43,7 @@ struct LaunchListView: View {
                                 await viewModel.fetchLaunches()
                             }
                         }
-                        .foregroundColor(ThemeColors.neonBlue)
+                        .foregroundColor(ThemeColors.brightyellow)
                     }
                     .padding()
                 } else {
@@ -78,7 +78,7 @@ struct LaunchCard: View {
                         switch phase {
                         case .empty:
                             ProgressView()
-                                .tint(ThemeColors.neonBlue)
+                                .tint(ThemeColors.brightyellow)
                         case .success(let image):
                             image
                                 .resizable()
@@ -115,7 +115,7 @@ struct LaunchCard: View {
                 
                 HStack {
                     Image(systemName: "calendar")
-                        .foregroundColor(ThemeColors.neonBlue)
+                        .foregroundColor(ThemeColors.brightyellow)
                     Text(launch.formattedDate)
                         .font(.caption)
                         .foregroundColor(ThemeColors.lightGray)

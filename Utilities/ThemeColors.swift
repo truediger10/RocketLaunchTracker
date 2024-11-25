@@ -8,6 +8,7 @@ struct ThemeColors {
     static let almostWhite = Color(hex: "E5E5E5")
     static let neonBlue = Color(hex: "00BFFF")
     static let lunarRock = Color(hex: "7A7D7C")
+    static let brightyellow = Color(hex: "D7FF00")
 }
 
 extension Color {

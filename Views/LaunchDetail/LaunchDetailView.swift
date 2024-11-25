@@ -70,7 +70,7 @@ struct LaunchDetailView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(ThemeColors.neonBlue)
+                            .background(ThemeColors.brightyellow)
                             .cornerRadius(12)
                         }
                     }
