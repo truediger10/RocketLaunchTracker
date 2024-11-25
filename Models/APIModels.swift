@@ -46,11 +46,13 @@ struct SpaceDevsLaunch: Codable {
         let type: String?
         let orbit: Orbit?
         
-        struct Orbit: Codable {
-            let name: String
+            struct Orbit: Codable {
+                let name: String
         }
     }
-    
+    struct MissionName: Codable {
+        let name: String
+    }
     struct Pad: Codable {
         let name: String
         let wiki_url: String?
@@ -91,6 +93,6 @@ extension SpaceDevsLaunch {
             detailedDescription: enrichment?.detailedDescription ?? mission?.description ?? "No detailed description available",
             orbit: mission?.orbit?.name,
             wikiURL: pad.wiki_url
-        )
+         )
     }
 }

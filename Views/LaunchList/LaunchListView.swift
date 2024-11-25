@@ -51,7 +51,7 @@ struct LaunchListView: View {
                         .foregroundColor(ThemeColors.almostWhite)
                 }
             }
-            .navigationTitle("Launch Tracker")
+            .navigationTitle("Upcoming Launches")
             .sheet(item: $selectedLaunch) { launch in
                 LaunchDetailView(launch: launch)
             }
@@ -65,68 +65,3 @@ struct LaunchListView: View {
     }
 }
 
-import SwiftUI
-
-struct LaunchCard: View {
-    let launch: Launch
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Image Section
-            Group {
-                if let imageURL = launch.imageURL,
-                   let url = URL(string: imageURL) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .tint(ThemeColors.brightyellow)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        case .failure(_):
-                            Image(systemName: "airplane")
-                                .font(.system(size: 40))
-                                .foregroundColor(ThemeColors.lunarRock)
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                } else {
-                    Image(systemName: "airplane")
-                        .font(.system(size: 40))
-                        .foregroundColor(ThemeColors.lunarRock)
-                }
-            }
-            .frame(height: 200)
-            .frame(maxWidth: .infinity)
-            .background(ThemeColors.darkGray)
-            .clipped()
-            
-            // Info Section
-            VStack(alignment: .leading, spacing: 8) {
-                Text(launch.name)
-                    .font(.headline)
-                    .foregroundColor(ThemeColors.almostWhite)
-                
-                Text(launch.shortDescription)
-                    .font(.subheadline)
-                    .foregroundColor(ThemeColors.lightGray)
-                    .lineLimit(2)
-                
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundColor(ThemeColors.brightyellow)
-                    Text(launch.formattedDate)
-                        .font(.caption)
-                        .foregroundColor(ThemeColors.lightGray)
-                }
-            }
-            .padding()
-        }
-        .background(ThemeColors.darkGray)
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.2), radius: 8)
-    }
-}
