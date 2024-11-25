@@ -2,19 +2,21 @@ import Foundation
 
 actor APIManager {
     static let shared = APIManager()
-    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/?format=json&limit=10"
+    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=10"
     private let cache = CacheManager.shared
     private let openAIService = OpenAIService.shared
     
     private init() {}
     
     func fetchLaunches() async throws -> [Launch] {
-        print("📡 Fetching launches from API...")
+        print("🚀 Fetching launches...")
         
         if let cachedLaunches = await cache.getCachedLaunches() {
             print("📦 Retrieved \(cachedLaunches.count) launches from cache")
             return cachedLaunches
         }
+        
+        print("🌐 Fetching upcoming launches from API...")
         
         guard let url = URL(string: baseURL) else {
             print("❌ Invalid URL: \(baseURL)")
@@ -31,18 +33,35 @@ actor APIManager {
                 throw APIError.invalidResponse
             }
             
-            print("📥 Status Code: \(httpResponse.statusCode)")
+            print("🔵 Status Code: \(httpResponse.statusCode)")
             
             if (200...299).contains(httpResponse.statusCode) {
                 let decoder = JSONDecoder()
                 let spaceDevsResponse = try decoder.decode(SpaceDevsResponse.self, from: data)
                 print("✅ Decoded \(spaceDevsResponse.results.count) launches")
                 
-                let launches = spaceDevsResponse.results.map { $0.toAppLaunch() }
-                print("✨ Converted to app launches")
+                var enrichedLaunches: [Launch] = []
                 
-                await cache.cacheLaunches(launches)
-                return launches
+                for spaceDevsLaunch in spaceDevsResponse.results {
+                    if let cachedEnrichment = await cache.getCachedEnrichment(for: spaceDevsLaunch.id) {
+                        print("🧠 Using cached enrichment for launch \(spaceDevsLaunch.id)")
+                        enrichedLaunches.append(spaceDevsLaunch.toAppLaunch(withEnrichment: cachedEnrichment))
+                    } else {
+                        do {
+                            let enrichment = try await openAIService.enrichLaunch(spaceDevsLaunch)
+                            await cache.cacheEnrichment(enrichment, for: spaceDevsLaunch.id)
+                            enrichedLaunches.append(spaceDevsLaunch.toAppLaunch(withEnrichment: enrichment))
+                        } catch {
+                            print("⚠️ Enrichment failed for launch \(spaceDevsLaunch.id): \(error)")
+                            enrichedLaunches.append(spaceDevsLaunch.toAppLaunch())
+                        }
+                    }
+                }
+                
+                print("⭐️ Converted to app launches")
+                await cache.cacheLaunches(enrichedLaunches)
+                print("📱 Received \(enrichedLaunches.count) launches")
+                return enrichedLaunches
                 
             } else {
                 throw APIError.serverError(code: httpResponse.statusCode)

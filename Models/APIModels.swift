@@ -1,12 +1,13 @@
 import Foundation
 
-// MARK: - SpaceDevs API Models
+// MARK: - SpaceDevs API Response
 struct SpaceDevsResponse: Codable {
     let count: Int
     let next: String?
     let results: [SpaceDevsLaunch]
 }
 
+// MARK: - Launch
 struct SpaceDevsLaunch: Codable {
     let id: String
     let name: String
@@ -28,12 +29,6 @@ struct SpaceDevsLaunch: Codable {
     struct LaunchServiceProvider: Codable {
         let id: Int
         let name: String
-        let type: ProviderType?
-        
-        struct ProviderType: Codable {
-            let id: Int
-            let name: String
-        }
     }
     
     struct Rocket: Codable {
@@ -46,9 +41,9 @@ struct SpaceDevsLaunch: Codable {
     }
     
     struct Mission: Codable {
-        let name: String
+        let name: String?
         let description: String?
-        let type: String
+        let type: String?
         let orbit: Orbit?
         
         struct Orbit: Codable {
@@ -71,9 +66,15 @@ struct SpaceDevsLaunch: Codable {
     }
 }
 
-// Function to convert API launch to app Launch model
+// MARK: - Launch Enrichment
+struct LaunchEnrichment: Codable {
+    let shortDescription: String
+    let detailedDescription: String
+}
+
+// MARK: - SpaceDevsLaunch Extension
 extension SpaceDevsLaunch {
-    func toAppLaunch() -> Launch {
+    func toAppLaunch(withEnrichment enrichment: LaunchEnrichment? = nil) -> Launch {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime]
         
@@ -86,8 +87,8 @@ extension SpaceDevsLaunch {
             provider: launch_service_provider.name,
             location: pad.location.name,
             imageURL: image?.image_url,
-            shortDescription: mission?.description ?? "No description available",
-            detailedDescription: mission?.description ?? "No detailed description available",
+            shortDescription: enrichment?.shortDescription ?? mission?.description ?? "No description available",
+            detailedDescription: enrichment?.detailedDescription ?? mission?.description ?? "No detailed description available",
             orbit: mission?.orbit?.name,
             wikiURL: pad.wiki_url
         )

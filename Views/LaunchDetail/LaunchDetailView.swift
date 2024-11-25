@@ -7,43 +7,57 @@ struct LaunchDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // Hero Image Section
-                AsyncImage(url: URL(string: launch.imageURL ?? "")) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Rectangle()
-                        .fill(ThemeColors.darkGray)
-                        .overlay {
-                            Image(systemName: "rocket")
-                                .foregroundColor(ThemeColors.lunarRock)
-                                .font(.system(size: 40))
-                        }
+                // Hero Image Section with fixed aspect ratio
+                AsyncImage(url: URL(string: launch.imageURL ?? "")) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(height: 200)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 200)
+                            .clipped()
+                    case .failure(_):
+                        Rectangle()
+                            .fill(ThemeColors.darkGray)
+                            .frame(height: 200)
+                            .overlay {
+                                Image(systemName: "rocket.fill")
+                                    .foregroundColor(ThemeColors.lunarRock)
+                                    .font(.system(size: 40))
+                            }
+                    @unknown default:
+                        EmptyView()
+                    }
                 }
-                .frame(height: 300)
-                .clipped()
                 
                 // Content Section
                 VStack(alignment: .leading, spacing: 20) {
                     // Header
                     VStack(alignment: .leading, spacing: 8) {
                         Text(launch.name)
-                            .font(.title)
+                            .font(.title2)
                             .foregroundColor(ThemeColors.almostWhite)
+                            .fixedSize(horizontal: false, vertical: true) // Allow text wrapping
                         
                         Text(launch.provider)
                             .font(.subheadline)
                             .foregroundColor(ThemeColors.lightGray)
                     }
+                    .padding(.horizontal)
                     
                     // Launch Info
-                    InfoRow(title: "Date", value: launch.formattedDate)
-                    InfoRow(title: "Location", value: launch.location)
-                    InfoRow(title: "Rocket", value: launch.rocketName)
-                    if let orbit = launch.orbit {
-                        InfoRow(title: "Orbit", value: orbit)
+                    VStack(alignment: .leading, spacing: 12) {
+                        InfoRow(title: "Date", value: launch.formattedDate)
+                        InfoRow(title: "Location", value: launch.location)
+                        InfoRow(title: "Rocket", value: launch.rocketName)
+                        if let orbit = launch.orbit {
+                            InfoRow(title: "Orbit", value: orbit)
+                        }
                     }
+                    .padding(.horizontal)
                     
                     // Description
                     VStack(alignment: .leading, spacing: 12) {
@@ -53,10 +67,12 @@ struct LaunchDetailView: View {
                         
                         Text(launch.detailedDescription)
                             .foregroundColor(ThemeColors.lightGray)
+                            .fixedSize(horizontal: false, vertical: true) // Allow text wrapping
                     }
                     .padding()
                     .background(ThemeColors.darkGray)
                     .cornerRadius(12)
+                    .padding(.horizontal)
                     
                     // Wiki Link if available
                     if let wikiURL = launch.wikiURL,
@@ -73,14 +89,18 @@ struct LaunchDetailView: View {
                             .background(ThemeColors.brightyellow)
                             .cornerRadius(12)
                         }
+                        .padding(.horizontal)
                     }
                 }
-                .padding()
+                .padding(.vertical)
             }
         }
         .background(ThemeColors.spaceBlack)
         .ignoresSafeArea(.all, edges: .top)
-        .overlay(closeButton, alignment: .topTrailing)
+        .overlay(alignment: .topTrailing) {
+            closeButton
+                .padding()
+        }
     }
     
     private var closeButton: some View {
@@ -90,7 +110,7 @@ struct LaunchDetailView: View {
             Image(systemName: "xmark.circle.fill")
                 .font(.title)
                 .foregroundColor(ThemeColors.almostWhite)
-                .padding()
+                .background(Circle().fill(ThemeColors.spaceBlack.opacity(0.5)))
         }
     }
 }
@@ -107,6 +127,7 @@ struct InfoRow: View {
             Text(value)
                 .font(.body)
                 .foregroundColor(ThemeColors.almostWhite)
+                .fixedSize(horizontal: false, vertical: true) // Allow text wrapping
         }
     }
 }

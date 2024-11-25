@@ -7,7 +7,7 @@ enum APIError: LocalizedError {
     case rateLimited
     case serverError(code: Int)
     case networkError(Error)
-    case processingError    // Added this missing case
+    case processingError
     case dataConversionError
     
     var errorDescription: String? {

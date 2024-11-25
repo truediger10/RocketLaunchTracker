@@ -1,41 +1,7 @@
 import Foundation
 
-// MARK: - OpenAI Models
-struct OpenAIRequest: Codable {
-    let model: String
-    let messages: [Message]
-    let temperature: Double
-    let max_tokens: Int
-    
-    enum CodingKeys: String, CodingKey {
-        case model, messages, temperature
-        case max_tokens = "max_tokens"
-    }
-}
-
-struct Message: Codable {
-    let role: String
-    let content: String
-}
-
-struct OpenAIResponse: Codable {
-    let choices: [Choice]
-    
-    struct Choice: Codable {
-        let message: Message
-        let finish_reason: String?
-    }
-}
-
-struct LaunchEnrichment: Codable {
-    let shortDescription: String
-    let detailedDescription: String
-}
-
-// MARK: - OpenAI Service
 actor OpenAIService {
     static let shared = OpenAIService()
-    
     private let endpoint = "https://api.openai.com/v1/chat/completions"
     private let model = "gpt-4"
     
@@ -114,12 +80,10 @@ actor OpenAIService {
                 throw APIError.processingError
             }
             
-            // Try to decode the response content as LaunchEnrichment
             do {
                 return try decoder.decode(LaunchEnrichment.self, from: contentData)
             } catch {
                 print("❌ Failed to decode enrichment: \(error)")
-                // Fallback content if parsing fails
                 return LaunchEnrichment(
                     shortDescription: "Launch of \(request.messages.last?.content ?? "unknown mission")",
                     detailedDescription: content
@@ -129,5 +93,27 @@ actor OpenAIService {
             print("❌ OpenAI request failed: \(error)")
             throw error
         }
+    }
+}
+
+// MARK: - OpenAI Models
+struct OpenAIRequest: Codable {
+    let model: String
+    let messages: [Message]
+    let temperature: Double
+    let max_tokens: Int
+}
+
+struct Message: Codable {
+    let role: String
+    let content: String
+}
+
+struct OpenAIResponse: Codable {
+    let choices: [Choice]
+    
+    struct Choice: Codable {
+        let message: Message
+        let finish_reason: String?
     }
 }

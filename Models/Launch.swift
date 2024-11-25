@@ -15,7 +15,7 @@ struct Launch: Identifiable, Codable {
     let wikiURL: String?
     
     var isUpcoming: Bool {
-        launchDate > Date() && status != .cancelled
+        launchDate > Date()
     }
     
     var formattedDate: String {
@@ -30,4 +30,15 @@ enum LaunchStatus: String, Codable {
     case failed = "Launch Failure"
     case delayed = "Launch Delayed"
     case cancelled = "Launch Cancelled"
+    
+    var displayText: String {
+        switch self {
+        case .upcoming: return "Upcoming"
+        case .launching: return "Launching"
+        case .successful: return "Successful"
+        case .failed: return "Failed"
+        case .delayed: return "Delayed"
+        case .cancelled: return "Cancelled"
+        }
+    }
 }

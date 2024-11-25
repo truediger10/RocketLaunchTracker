@@ -65,6 +65,8 @@ struct LaunchListView: View {
     }
 }
 
+import SwiftUI
+
 struct LaunchCard: View {
     let launch: Launch
     
@@ -84,7 +86,7 @@ struct LaunchCard: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                         case .failure(_):
-                            Image(systemName: "rocket")
+                            Image(systemName: "airplane")
                                 .font(.system(size: 40))
                                 .foregroundColor(ThemeColors.lunarRock)
                         @unknown default:
@@ -92,7 +94,7 @@ struct LaunchCard: View {
                         }
                     }
                 } else {
-                    Image(systemName: "rocket")
+                    Image(systemName: "airplane")
                         .font(.system(size: 40))
                         .foregroundColor(ThemeColors.lunarRock)
                 }
