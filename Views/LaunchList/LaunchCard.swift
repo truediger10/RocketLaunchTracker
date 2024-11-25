@@ -1,81 +1,92 @@
-
 import SwiftUI
 
 struct LaunchCard: View {
     let launch: Launch
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Image Section
-            Group {
-                if let imageURL = launch.imageURL,
-                   let url = URL(string: imageURL) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .tint(ThemeColors.brightyellow)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                        case .failure(_):
-                            Image("placeholderImage")
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(height: 200)
-                                .clipped()
-                        @unknown default:
-                            EmptyView()
-                        }
+        VStack(alignment: .leading, spacing: 0) {
+            // Image Container with fixed aspect ratio
+            ZStack(alignment: .topLeading) {
+                AsyncImage(url: URL(string: launch.imageURL ?? "")) { phase in
+                    switch phase {
+                    case .empty:
+                        loadingPlaceholder
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(16/9, contentMode: .fill)
+                    case .failure:
+                        errorPlaceholder
+                    @unknown default:
+                        EmptyView()
                     }
-                } else {
-                    Image(systemName: "airplane")
-                        .font(.system(size: 40))
-                        .foregroundColor(ThemeColors.lunarRock)
                 }
-            }
-            .frame(height: 200)
-            .frame(maxWidth: .infinity)
-            .background(ThemeColors.darkGray)
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.2), radius: 8)
-            
-            // Info Section
-            VStack(alignment: .leading, spacing: 8) {
-                Text(launch.name)
-                    .font(.headline)
-                    .foregroundColor(ThemeColors.almostWhite)
-                    .padding(3)
-                Text(launch.provider)
-                    .font(.subheadline)
-                    .foregroundColor(ThemeColors.brightyellow)
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundColor(ThemeColors.brightyellow)
-                    Text(launch.formattedDate)
-                        .font(.caption)
-                        .foregroundColor(ThemeColors.lightGray)
-                }
-                HStack {
-                    Image(systemName: "pin")
-                        .foregroundColor(ThemeColors.brightyellow)
-                    Text(launch.location)
-                        .font(.caption)
-                        .foregroundColor(ThemeColors.lightGray)
-                }
-                Text(launch.shortDescription)
-                    .font(.subheadline)
-                    .foregroundColor(ThemeColors.almostWhite)
-                    .lineLimit(3)
+                .frame(height: 200)
+                .clipped()
+                .overlay(
+                    LinearGradient(
+                        colors: [
+                            .black.opacity(0.4),
+                            .clear,
+                            .clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 
+                LaunchStatusTag(status: launch.status)
+                    .padding([.top, .leading], 16)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
-            .background(ThemeColors.darkGray)
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.2), radius: 8)
+            
+            // Content Container
+            VStack(alignment: .leading, spacing: 16) {
+                // Title and Description
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(launch.name)
+                        .font(.headline)
+                        .foregroundColor(ThemeColors.almostWhite)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    Text(launch.shortDescription)
+                        .font(.subheadline)
+                        .foregroundColor(ThemeColors.lightGray)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                // Launch Details
+                VStack(alignment: .leading, spacing: 12) {
+                    LaunchDetailRow(label: "Launch Date", value: launch.formattedDate, icon: "calendar")
+                    LaunchDetailRow(label: "Location", value: launch.location, icon: "mappin.and.ellipse")
+                    LaunchDetailRow(label: "Provider", value: launch.provider, icon: "airplane")
+                }
+            }
+            .padding(16)
         }
+        .background(ThemeColors.darkGray)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+    }
+    
+    // MARK: - Helper Views
+    private var loadingPlaceholder: some View {
+        Rectangle()
+            .fill(ThemeColors.darkGray)
+            .overlay {
+                ProgressView()
+                    .tint(ThemeColors.brightyellow)
+            }
+    }
+    
+    private var errorPlaceholder: some View {
+        Rectangle()
+            .fill(ThemeColors.darkGray)
+            .overlay {
+                Image(systemName: "rocket.fill")
+                    .foregroundColor(ThemeColors.lunarRock)
+                    .font(.system(size: 40))
+            }
     }
 }

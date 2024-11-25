@@ -4,54 +4,37 @@ struct LaunchListView: View {
     @StateObject private var viewModel = LaunchViewModel()
     @State private var selectedLaunch: Launch?
     
-    private let columns = [
-        GridItem(.adaptive(minimum: 300, maximum: 400), spacing: 20)
-    ]
-    
     var body: some View {
         NavigationView {
-            ZStack {
-                ThemeColors.spaceBlack.ignoresSafeArea()
-                
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach(viewModel.launches) { launch in
+                        LaunchCard(launch: launch)
+                            .onTapGesture {
+                                selectedLaunch = launch
+                            }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+            .background(ThemeColors.spaceBlack)
+            .navigationTitle("Upcoming Launches")
+            .overlay {
                 if viewModel.isLoading {
                     ProgressView()
                         .scaleEffect(1.5)
                         .tint(ThemeColors.brightyellow)
-                } else if !viewModel.launches.isEmpty {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(viewModel.launches) { launch in
-                                LaunchCard(launch: launch)
-                                    .onTapGesture {
-                                        selectedLaunch = launch
-                                    }
-                            }
+                }
+                
+                if let error = viewModel.error {
+                    ErrorView(error: error) {
+                        Task {
+                            await viewModel.fetchLaunches()
                         }
-                        .padding()
                     }
-                } else if let error = viewModel.error {
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
-                            .foregroundColor(ThemeColors.brightyellow)
-                        Text(error)
-                            .foregroundColor(ThemeColors.almostWhite)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                        Button("Retry") {
-                            Task {
-                                await viewModel.fetchLaunches()
-                            }
-                        }
-                        .foregroundColor(ThemeColors.brightyellow)
-                    }
-                    .padding()
-                } else {
-                    Text("No launches available")
-                        .foregroundColor(ThemeColors.almostWhite)
                 }
             }
-            .navigationTitle("Upcoming Launches")
             .sheet(item: $selectedLaunch) { launch in
                 LaunchDetailView(launch: launch)
             }
@@ -65,3 +48,21 @@ struct LaunchListView: View {
     }
 }
 
+struct ErrorView: View {
+    let error: String
+    let retry: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundColor(ThemeColors.brightyellow)
+            Text(error)
+                .foregroundColor(ThemeColors.almostWhite)
+                .multilineTextAlignment(.center)
+                .padding()
+            Button("Retry", action: retry)
+                .foregroundColor(ThemeColors.brightyellow)
+        }
+    }
+}
