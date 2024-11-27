@@ -1,33 +1,30 @@
 import Foundation
 
-enum APIError: LocalizedError {
+enum APIError: Error, LocalizedError {
     case invalidURL
     case invalidResponse
+    case decodingError(String)
     case unauthorized
     case rateLimited
     case serverError(code: Int)
     case networkError(Error)
-    case processingError
-    case dataConversionError
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid URL configuration"
+            return "The URL is invalid."
         case .invalidResponse:
-            return "Invalid response from server"
+            return "Received invalid response from the server."
+        case .decodingError(let message):
+            return "Failed to decode data: \(message)"
         case .unauthorized:
-            return "Unauthorized access"
+            return "You are not authorized to perform this action."
         case .rateLimited:
-            return "Too many requests. Please try again later"
+            return "You have exceeded the rate limit."
         case .serverError(let code):
-            return "Server error (Code: \(code))"
+            return "Server error with code: \(code)."
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
-        case .processingError:
-            return "Error processing data"
-        case .dataConversionError:
-            return "Error converting data"
         }
     }
 }

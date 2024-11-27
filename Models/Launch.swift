@@ -3,42 +3,35 @@ import Foundation
 struct Launch: Identifiable, Codable {
     let id: String
     let name: String
-    let launchDate: Date
+    let launchDate: String?
     let status: LaunchStatus
     let rocketName: String
     let provider: String
     let location: String
     let imageURL: String?
-    let shortDescription: String
-    let detailedDescription: String
-    let orbit: String?
+    let shortDescription: String?
+    let detailedDescription: String?
     let wikiURL: String?
-    
-    var isUpcoming: Bool {
-        launchDate > Date()
-    }
-    
-    var formattedDate: String {
-        launchDate.formatted(date: .long, time: .shortened)
-    }
+    let missionType: String?
+    let orbit: String?
+    let providerStats: ProviderStats?
+    let padInfo: PadInfo?
+    let windowStart: String?
+    let windowEnd: String?
+    let probability: Int?
+    let weatherConcerns: String?
+    let videoURLs: [String]?
+    let infoURLs: [String]?
+    let imageCredit: String?
 }
 
-enum LaunchStatus: String, Codable {
-    case upcoming = "Go for Launch"
-    case launching = "In Flight"
-    case successful = "Launch Successful"
-    case failed = "Launch Failure"
-    case delayed = "Launch Delayed"
-    case cancelled = "Launch Cancelled"
-    
-    var displayText: String {
-        switch self {
-        case .upcoming: return "Upcoming"
-        case .launching: return "Launching"
-        case .successful: return "Successful"
-        case .failed: return "Failed"
-        case .delayed: return "Delayed"
-        case .cancelled: return "Cancelled"
-        }
-    }
+struct PadInfo: Codable {
+    let name: String
+    let location: String
+    let countryCode: String?
+}
+
+struct ProviderStats: Codable {
+    let successfulLaunches: Int
+    let failedLaunches: Int
 }

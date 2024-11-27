@@ -2,10 +2,12 @@ import SwiftUI
 
 @main
 struct RocketLaunchTrackerApp: App {
+    let persistenceController = PersistenceController.shared
+
     var body: some Scene {
         WindowGroup {
             LaunchListView()
-                .preferredColorScheme(.dark)
+                .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }
 }

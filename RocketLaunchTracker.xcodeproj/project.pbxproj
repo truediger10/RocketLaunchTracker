@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		755B1ECE2CF5BAB300219865 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 755B1ECD2CF5BAB300219865 /* Kingfisher */; };
+		75E739AD2CF6671D00EFC975 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75E739AB2CF666C000EFC975 /* UIKit.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		75E8BF1D2CF2F45C00A40CB1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +29,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		75E739AB2CF666C000EFC975 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.1.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
+		75E739B22CF676C300EFC975 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.1.sdk/System/Library/Frameworks/CoreData.framework; sourceTree = DEVELOPER_DIR; };
 		75E8BF0B2CF2F45B00A40CB1 /* RocketLaunchTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RocketLaunchTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E8BF1C2CF2F45C00A40CB1 /* RocketLaunchTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RocketLaunchTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E8BF262CF2F45C00A40CB1 /* RocketLaunchTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RocketLaunchTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -82,6 +89,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				75E739AD2CF6671D00EFC975 /* UIKit.framework in Frameworks */,
+				755B1ECE2CF5BAB300219865 /* Kingfisher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +111,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		75E739AA2CF666C000EFC975 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				75E739B22CF676C300EFC975 /* CoreData.framework */,
+				75E739AB2CF666C000EFC975 /* UIKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		75E8BF022CF2F45B00A40CB1 = {
 			isa = PBXGroup;
 			children = (
@@ -114,6 +132,7 @@
 				75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */,
 				75E8BF1F2CF2F45C00A40CB1 /* RocketLaunchTrackerTests */,
 				75E8BF292CF2F45C00A40CB1 /* RocketLaunchTrackerUITests */,
+				75E739AA2CF666C000EFC975 /* Frameworks */,
 				75E8BF0C2CF2F45B00A40CB1 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -154,6 +173,7 @@
 			);
 			name = RocketLaunchTracker;
 			packageProductDependencies = (
+				755B1ECD2CF5BAB300219865 /* Kingfisher */,
 			);
 			productName = RocketLaunchTracker;
 			productReference = 75E8BF0B2CF2F45B00A40CB1 /* RocketLaunchTracker.app */;
@@ -237,6 +257,9 @@
 			);
 			mainGroup = 75E8BF022CF2F45B00A40CB1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				755B1ECC2CF5BAB300219865 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 75E8BF0C2CF2F45B00A40CB1 /* Products */;
 			projectDirPath = "";
@@ -430,6 +453,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = RocketLaunchTracker/RocketLaunchTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -438,6 +462,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Rocket Launch Tracker";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -455,11 +481,14 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.troyruediger.RocketLaunchTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 2.1;
 			};
 			name = Debug;
@@ -469,6 +498,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = RocketLaunchTracker/RocketLaunchTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -477,6 +507,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Rocket Launch Tracker";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -494,11 +526,14 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.troyruediger.RocketLaunchTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 				XROS_DEPLOYMENT_TARGET = 2.1;
 			};
 			name = Release;
@@ -633,6 +668,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		755B1ECC2CF5BAB300219865 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.1.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		755B1ECD2CF5BAB300219865 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 755B1ECC2CF5BAB300219865 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 75E8BF032CF2F45B00A40CB1 /* Project object */;
 }

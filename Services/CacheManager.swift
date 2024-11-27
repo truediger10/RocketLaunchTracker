@@ -1,80 +1,39 @@
 import Foundation
+import CoreData
 
-actor CacheManager {
+/// Manages caching for Launch data and their enrichment.
+class CacheManager: CacheProtocol {
     static let shared = CacheManager()
-    
-    private let launchCacheTime: TimeInterval = 5 * 60 // 5 minutes
-    private let enrichmentCacheTime: TimeInterval = 24 * 60 * 60 // 24 hours
-    
-    private let fileManager = FileManager.default
-    private let cacheDirectory: URL
-    
+    private let persistentContainer: NSPersistentContainer
+
     private init() {
-        let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        cacheDirectory = cachesDirectory.appendingPathComponent("RocketLaunchCache")
-        try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
-    }
-    
-    func getCachedLaunches() async -> [Launch]? {
-        let fileURL = cacheDirectory.appendingPathComponent("launches.cache")
-        guard let data = try? Data(contentsOf: fileURL),
-              let cache = try? JSONDecoder().decode(CachedLaunches.self, from: data),
-              !cache.isExpired(expirationTime: launchCacheTime) else {
-            return nil
-        }
-        return cache.launches
-    }
-    
-    func cacheLaunches(_ launches: [Launch]) async {
-        let cache = CachedLaunches(launches: launches, timestamp: Date())
-        let fileURL = cacheDirectory.appendingPathComponent("launches.cache")
-        
-        do {
-            let data = try JSONEncoder().encode(cache)
-            try data.write(to: fileURL)
-        } catch {
-            print("Failed to cache launches: \(error.localizedDescription)")
+        persistentContainer = NSPersistentContainer(name: "RocketLaunchTrackerModel")
+        persistentContainer.loadPersistentStores { _, error in
+            if let error = error {
+                fatalError("Failed to load Core Data stack: \(error)")
+            }
         }
     }
-    
-    func getCachedEnrichment(for id: String) async -> LaunchEnrichment? {
-        let fileURL = cacheDirectory.appendingPathComponent("enrichment_\(id).cache")
-        guard let data = try? Data(contentsOf: fileURL),
-              let cache = try? JSONDecoder().decode(CachedEnrichment.self, from: data),
-              !cache.isExpired(expirationTime: enrichmentCacheTime) else {
-            return nil
-        }
-        return cache.enrichment
-    }
-    
-    func cacheEnrichment(_ enrichment: LaunchEnrichment, for id: String) async {
-        let cache = CachedEnrichment(enrichment: enrichment, timestamp: Date())
-        let fileURL = cacheDirectory.appendingPathComponent("enrichment_\(id).cache")
-        
-        do {
-            let data = try JSONEncoder().encode(cache)
-            try data.write(to: fileURL)
-        } catch {
-            print("Failed to cache enrichment: \(error.localizedDescription)")
-        }
-    }
-}
 
-// MARK: - Cache Models
-private struct CachedLaunches: Codable {
-    let launches: [Launch]
-    let timestamp: Date
-    
-    func isExpired(expirationTime: TimeInterval) -> Bool {
-        Date().timeIntervalSince(timestamp) > expirationTime
+    func cacheLaunches(_ launches: [Launch]) async throws {
+        // Implement caching logic here.
     }
-}
 
-private struct CachedEnrichment: Codable {
-    let enrichment: LaunchEnrichment
-    let timestamp: Date
-    
-    func isExpired(expirationTime: TimeInterval) -> Bool {
-        Date().timeIntervalSince(timestamp) > expirationTime
+    func getCachedLaunches() async throws -> [Launch] {
+        // Implement fetching logic here.
+        return []
+    }
+
+    func cacheEnrichment(_ enrichment: LaunchEnrichment, for launchID: String) async throws {
+        // Implement caching enrichment logic here.
+    }
+
+    func getCachedEnrichment(for launchID: String) async throws -> LaunchEnrichment {
+        // Implement fetching enrichment logic here.
+        return LaunchEnrichment(shortDescription: "", detailedDescription: "")
+    }
+
+    func clearCache() async throws {
+        // Implement clearing cache logic here.
     }
 }

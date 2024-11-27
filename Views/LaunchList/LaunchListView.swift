@@ -2,66 +2,55 @@ import SwiftUI
 
 struct LaunchListView: View {
     @StateObject private var viewModel = LaunchViewModel()
-    @State private var selectedLaunch: Launch?
-    
-    private let columns = [
-        GridItem(.adaptive(minimum: 300, maximum: 400), spacing: 20)
-    ]
-    
+
     var body: some View {
         NavigationView {
-            ZStack {
-                ThemeColors.spaceBlack.ignoresSafeArea()
-                
-                if viewModel.isLoading {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                        .tint(ThemeColors.brightyellow)
-                } else if !viewModel.launches.isEmpty {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(viewModel.launches) { launch in
+            Group {
+                if viewModel.isLoading && viewModel.launches.isEmpty {
+                    LoadingView()
+                } else if let error = viewModel.error {
+                    ErrorView(error: error) {
+                        await viewModel.retryLastOperation()
+                    }
+                } else if viewModel.launches.isEmpty {
+                    EmptyStateView()
+                } else {
+                    List {
+                        ForEach(viewModel.filteredLaunches) { launch in
+                            NavigationLink(destination: LaunchDetailView(launch: launch)) {
                                 LaunchCard(launch: launch)
-                                    .onTapGesture {
-                                        selectedLaunch = launch
+                                    .onAppear {
+                                        Task {
+                                            await viewModel.loadMoreIfNeeded(currentItem: launch)
+                                        }
                                     }
                             }
                         }
-                        .padding()
-                    }
-                } else if let error = viewModel.error {
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
-                            .foregroundColor(ThemeColors.brightyellow)
-                        Text(error)
-                            .foregroundColor(ThemeColors.almostWhite)
-                            .multilineTextAlignment(.center)
-                            .padding()
-                        Button("Retry") {
-                            Task {
-                                await viewModel.fetchLaunches()
+
+                        if viewModel.isLoading {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
                             }
                         }
-                        .foregroundColor(ThemeColors.brightyellow)
                     }
-                    .padding()
-                } else {
-                    Text("No launches available")
-                        .foregroundColor(ThemeColors.almostWhite)
+                    .listStyle(PlainListStyle())
                 }
             }
-            .navigationTitle("Upcoming Launches")
-            .sheet(item: $selectedLaunch) { launch in
-                LaunchDetailView(launch: launch)
+            .navigationTitle("Rocket Launches")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: LaunchFilterView(selectedStatus: $viewModel.selectedStatus, selectedProvider: $viewModel.selectedProvider)) {
+                        Image(systemName: "line.horizontal.3.decrease.circle")
+                    }
+                }
             }
-            .refreshable {
-                await viewModel.fetchLaunches()
-            }
-            .task {
-                await viewModel.fetchLaunches()
+            .onAppear {
+                Task {
+                    await viewModel.fetchLaunches()
+                }
             }
         }
     }
 }
-
