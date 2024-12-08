@@ -7,19 +7,19 @@ struct SpaceDevsResponse: Codable {
     let results: [SpaceDevsLaunch]
 }
 
-// MARK: - Launch
+// MARK: - Launch and Related Models
 struct SpaceDevsLaunch: Codable {
     let id: String
     let name: String
     let net: String
-    let status: LaunchStatus
+    let status: APILaunchStatus
     let launch_service_provider: LaunchServiceProvider
     let rocket: Rocket
     let mission: Mission?
     let pad: Pad
     let image: ImageInfo?
     
-    struct LaunchStatus: Codable {
+    struct APILaunchStatus: Codable {
         let id: Int
         let name: String
         let abbrev: String
@@ -33,7 +33,6 @@ struct SpaceDevsLaunch: Codable {
     
     struct Rocket: Codable {
         let configuration: RocketConfiguration
-        
         struct RocketConfiguration: Codable {
             let name: String
             let full_name: String
@@ -46,13 +45,11 @@ struct SpaceDevsLaunch: Codable {
         let type: String?
         let orbit: Orbit?
         
-            struct Orbit: Codable {
-                let name: String
+        struct Orbit: Codable {
+            let name: String
         }
     }
-    struct MissionName: Codable {
-        let name: String
-    }
+    
     struct Pad: Codable {
         let name: String
         let wiki_url: String?
@@ -74,17 +71,38 @@ struct LaunchEnrichment: Codable {
     let detailedDescription: String
 }
 
-// MARK: - SpaceDevsLaunch Extension
+// MARK: - Converting SpaceDevsLaunch to App Launch
 extension SpaceDevsLaunch {
     func toAppLaunch(withEnrichment enrichment: LaunchEnrichment? = nil) -> Launch {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime]
+        let launchDate = dateFormatter.date(from: net) ?? Date()
+        
+        // Map the API status name to the LaunchStatus enum used by the app's Launch model.
+        let mappedStatus: LaunchStatus = {
+            switch status.name.lowercased() {
+            case "go for launch":
+                return .upcoming
+            case "in flight":
+                return .launching
+            case "launch successful":
+                return .successful
+            case "launch failure":
+                return .failed
+            case "launch delayed":
+                return .delayed
+            case "launch cancelled":
+                return .cancelled
+            default:
+                return .upcoming
+            }
+        }()
         
         return Launch(
             id: id,
             name: name,
-            launchDate: dateFormatter.date(from: net) ?? Date(),
-            status: .init(rawValue: status.name) ?? .upcoming,
+            launchDate: launchDate,
+            status: mappedStatus,
             rocketName: rocket.configuration.full_name,
             provider: launch_service_provider.name,
             location: pad.location.name,
@@ -93,6 +111,6 @@ extension SpaceDevsLaunch {
             detailedDescription: enrichment?.detailedDescription ?? mission?.description ?? "No detailed description available",
             orbit: mission?.orbit?.name,
             wikiURL: pad.wiki_url
-         )
+        )
     }
 }

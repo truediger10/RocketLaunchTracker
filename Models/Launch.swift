@@ -1,5 +1,6 @@
 import Foundation
 
+/// Represents a rocket launch, enriched with descriptive info from the OpenAI API.
 struct Launch: Identifiable, Codable {
     let id: String
     let name: String
@@ -39,6 +40,25 @@ enum LaunchStatus: String, Codable {
         case .failed: return "Failed"
         case .delayed: return "Delayed"
         case .cancelled: return "Cancelled"
+        }
+    }
+}
+
+extension Launch {
+    var timeUntilLaunch: String {
+        let now = Date()
+        if launchDate > now {
+            let diff = launchDate.timeIntervalSince(now)
+            let formatter = DateComponentsFormatter()
+            formatter.allowedUnits = [.day, .hour, .minute]
+            formatter.unitsStyle = .short
+            if let formatted = formatter.string(from: diff) {
+                return "\(formatted) until launch"
+            } else {
+                return "N/A until launch"
+            }
+        } else {
+            return "Launched"
         }
     }
 }

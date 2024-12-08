@@ -19,7 +19,7 @@ enum APIError: LocalizedError {
         case .unauthorized:
             return "Unauthorized access"
         case .rateLimited:
-            return "Too many requests. Please try again later"
+            return "Too many requests. Please try again later."
         case .serverError(let code):
             return "Server error (Code: \(code))"
         case .networkError(let error):

@@ -1,11 +1,3 @@
-//
-//  SafariView.swift
-//  RocketLaunchTracker
-//
-//  Created by Troy Ruediger on 11/25/24.
-//
-
-import Foundation
 import SwiftUI
 import SafariServices
 

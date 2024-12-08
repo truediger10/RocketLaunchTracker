@@ -3,12 +3,14 @@ import SwiftUI
 struct LaunchListView: View {
     @StateObject private var viewModel = LaunchViewModel()
     @State private var selectedLaunch: Launch?
+    @State private var showingFilter = false
     
     var body: some View {
         NavigationView {
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    ForEach(viewModel.launches) { launch in
+                    // Use filteredLaunches instead of launches
+                    ForEach(viewModel.filteredLaunches) { launch in
                         LaunchCard(launch: launch)
                             .onTapGesture {
                                 selectedLaunch = launch
@@ -20,6 +22,18 @@ struct LaunchListView: View {
             }
             .background(ThemeColors.spaceBlack)
             .navigationTitle("Upcoming Launches")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingFilter = true
+                    }) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .accessibilityLabel("Filter")
+                    }
+                }
+            }
+            // Add search functionality
+            .searchable(text: $viewModel.searchQuery, prompt: "Search launches...")
             .overlay {
                 if viewModel.isLoading {
                     ProgressView()
@@ -34,6 +48,10 @@ struct LaunchListView: View {
                         }
                     }
                 }
+            }
+            .sheet(isPresented: $showingFilter) {
+                // Show filter view modally
+                FilterView(criteria: $viewModel.criteria)
             }
             .sheet(item: $selectedLaunch) { launch in
                 LaunchDetailView(launch: launch)

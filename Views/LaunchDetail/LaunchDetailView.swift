@@ -1,5 +1,4 @@
 import SwiftUI
-import SafariServices
 
 struct LaunchDetailView: View {
     let launch: Launch
@@ -7,14 +6,26 @@ struct LaunchDetailView: View {
     @State private var showSafariView = false
     @State private var safariURL: URL?
     
+    // State for mission overview toggle
+    @State private var showFullMissionOverview = false
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 heroSection
-                
                 VStack(alignment: .leading, spacing: 24) {
                     titleSection
-                    detailsSection
+                    
+                    ZStack {
+                        ThemeColors.darkGray.opacity(0.4)
+                            .cornerRadius(12)
+                        
+                        // Add some horizontal padding inside to ensure left alignment feels correct
+                        detailsSection
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                    }
+                    
                     missionOverviewSection
                     learnMoreButton
                 }
@@ -34,10 +45,8 @@ struct LaunchDetailView: View {
         }
     }
     
-    // MARK: - View Components
     private var heroSection: some View {
         ZStack(alignment: .top) {
-            // Hero Image with proper aspect ratio and scaling
             GeometryReader { geometry in
                 AsyncImage(url: URL(string: launch.imageURL ?? "")) { phase in
                     switch phase {
@@ -56,9 +65,8 @@ struct LaunchDetailView: View {
                     }
                 }
             }
-            .frame(height: UIScreen.main.bounds.width * 0.75) // 4:3 aspect ratio
+            .frame(height: UIScreen.main.bounds.width * 0.75)
             
-            // Overlay gradient for better text visibility
             LinearGradient(
                 colors: [
                     .black.opacity(0.7),
@@ -69,7 +77,6 @@ struct LaunchDetailView: View {
                 endPoint: .center
             )
             
-            // Content overlay
             VStack(alignment: .leading, spacing: 12) {
                 Text(launch.provider)
                     .font(.headline)
@@ -80,7 +87,7 @@ struct LaunchDetailView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(ThemeColors.darkGray) // Background for loading state
+        .background(ThemeColors.darkGray)
     }
     
     private var titleSection: some View {
@@ -103,13 +110,35 @@ struct LaunchDetailView: View {
     
     private var missionOverviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Mission Overview")
-                .font(.headline)
-                .foregroundColor(ThemeColors.almostWhite)
+            HStack {
+                Text("Mission Overview")
+                    .font(.headline)
+                    .foregroundColor(ThemeColors.almostWhite)
+                
+                Spacer()
+                
+                // Toggle button for mission overview
+                Button(action: {
+                    withAnimation(.easeInOut) {
+                        showFullMissionOverview.toggle()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Text(showFullMissionOverview ? "Show Less" : "Show More")
+                            .font(.footnote)
+                        Image(systemName: showFullMissionOverview ? "chevron.up" : "chevron.down")
+                            .font(.footnote)
+                    }
+                    .foregroundColor(ThemeColors.brightyellow)
+                }
+            }
             
+            // Conditional lineLimit based on showFullMissionOverview
             Text(launch.detailedDescription)
                 .foregroundColor(ThemeColors.lightGray)
                 .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(showFullMissionOverview ? nil : 4)
+                .animation(.easeInOut, value: showFullMissionOverview)
         }
     }
     
