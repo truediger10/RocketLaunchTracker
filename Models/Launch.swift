@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /**
  Represents a rocket launch, potentially enriched with extra descriptive information.
@@ -7,6 +8,7 @@ import Foundation
  The `Launch` structure:
  - Conforms to `Identifiable` and `Codable` for easy integration with SwiftUI lists and JSON decoding.
  - Provides computed properties for user-friendly date formatting and launch state determination.
+ - Includes an optional `badges` property to highlight special launches.
  */
 struct Launch: Identifiable, Codable {
     // MARK: - Properties
@@ -37,6 +39,8 @@ struct Launch: Identifiable, Codable {
     let wikiURL: String?
     /// An optional Twitter search URL for discovering related tweets or discussions.
     let twitterURL: String?
+    /// An optional array of badges to highlight special launches like “Live,” “Exclusive,” “First Launch,” or “Notable.”
+    let badges: [Badge]?
 
     // MARK: - Computed Properties
     
@@ -49,44 +53,8 @@ struct Launch: Identifiable, Codable {
     var formattedDate: String {
         launchDate.formatted(date: .long, time: .shortened)
     }
-}
-
-/**
- An enumeration representing the status of a rocket launch.
- 
- Cases correspond to distinct phases or outcomes of a launch event. The `displayText` property
- offers a human-readable variant suitable for UI labels, accessibility, and logging.
- */
-enum LaunchStatus: String, Codable {
-    case upcoming = "Go for Launch"
-    case launching = "In Flight"
-    case successful = "Launch Successful"
-    case failed = "Launch Failure"
-    case delayed = "Launch Delayed"
-    case cancelled = "Launch Cancelled"
     
-    /// Provides a simplified, user-facing description of the launch status.
-    var displayText: String {
-        switch self {
-        case .upcoming: return "Upcoming"
-        case .launching: return "Launching"
-        case .successful: return "Successful"
-        case .failed: return "Failed"
-        case .delayed: return "Delayed"
-        case .cancelled: return "Cancelled"
-        }
-    }
-}
-
-// MARK: - Launch Extensions
-
-extension Launch {
-    /**
-     Calculates the time remaining until the launch date if it is upcoming, or indicates that the launch has already occurred.
-     
-     Provides a user-friendly string such as "2d 5h until launch" or "Launched" if the time has passed.
-     This property is useful for countdowns or status indicators in the UI.
-     */
+    /// Provides a user-friendly string indicating the time remaining until launch or if it has already launched.
     var timeUntilLaunch: String {
         let now = Date()
         
@@ -103,3 +71,11 @@ extension Launch {
         }
     }
 }
+
+/**
+ An enumeration representing the status of a rocket launch.
+ 
+ Cases correspond to distinct phases or outcomes of a launch event. The `displayText` property
+ offers a human-readable variant suitable for UI labels, accessibility, and logging.
+ */
+

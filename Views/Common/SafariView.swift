@@ -16,7 +16,7 @@ struct SafariView: UIViewControllerRepresentable {
     // MARK: - UIViewControllerRepresentable
     func makeUIViewController(context: Context) -> SFSafariViewController {
         let controller = SFSafariViewController(url: url, configuration: configuration)
-        controller.preferredControlTintColor = UIColor(ThemeColors.brightyellow)
+        controller.preferredControlTintColor = UIColor(ThemeColors.brightYellow)
         controller.dismissButtonStyle = .close
         return controller
     }

@@ -46,7 +46,7 @@ struct ErrorView: View {
     private var errorIcon: some View {
         Image(systemName: "exclamationmark.triangle.fill")
             .font(.system(size: Constants.iconSize, weight: .bold))
-            .foregroundColor(ThemeColors.brightyellow)
+            .foregroundColor(ThemeColors.brightYellow)
             .accessibilityHidden(true)
     }
     
@@ -66,7 +66,7 @@ struct ErrorView: View {
                 .foregroundColor(ThemeColors.spaceBlack)
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(ThemeColors.brightyellow)
+                .background(ThemeColors.brightYellow)
                 .cornerRadius(Constants.buttonCornerRadius)
                 .padding(.horizontal, Constants.buttonHorizontalPadding)
         }

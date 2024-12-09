@@ -1,57 +1,4 @@
 import SwiftUI
-import SafariServices
-import WebKit
-
-// MARK: - TweetButtonView
-
-/// A UIViewRepresentable that displays a Twitter share button using WKWebView.
-struct TweetButtonView: UIViewRepresentable {
-    let url: URL
-    let text: String
-    let showCount: Bool
-
-    func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.isOpaque = false
-        webView.backgroundColor = UIColor.clear
-
-        let count = showCount ? "true" : "false"
-        // Scale the tweet button using CSS transform: scale is set to 5 for better visibility
-        let htmlString = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta name="twitter:widgets:csp" content="on">
-        <style>
-            body {
-                margin:0;
-                padding:0;
-                background:transparent;
-                transform: scale(5);
-                transform-origin: top left;
-            }
-        </style>
-        </head>
-        <body>
-        <a href="https://twitter.com/share" class="twitter-share-button"
-           data-text="\(text)"
-           data-url="\(url.absoluteString)"
-           data-show-count="\(count)">Share Launch</a>
-        <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-        </body>
-        </html>
-        """
-
-        webView.loadHTMLString(htmlString, baseURL: nil)
-        return webView
-    }
-
-    func updateUIView(_ uiView: WKWebView, context: Context) {
-        // No dynamic updates needed for this view
-    }
-}
-
-// MARK: - LaunchDetailView
 
 /// A SwiftUI view that displays detailed information about a rocket launch.
 struct LaunchDetailView: View {
@@ -95,7 +42,7 @@ struct LaunchDetailView: View {
 
     // MARK: - Content Sections
 
-    /// The main content section containing title, details, mission overview, and share buttons.
+    /// The main content section containing title, details, mission overview, badges, and share buttons.
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: Constants.spacing) {
             titleSection
@@ -114,6 +61,16 @@ struct LaunchDetailView: View {
                    let validTwitterURL = URL(string: twitterURLString) {
                     shareSection(url: validTwitterURL)
                 }
+            }
+
+            // Display Badges if available
+            if let badges = launch.badges, !badges.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(badges) { badge in
+                        BadgeView(badge: badge)
+                    }
+                }
+                .padding(.top, 16)
             }
         }
         .padding(.horizontal, Constants.padding)
@@ -174,7 +131,7 @@ struct LaunchDetailView: View {
         VStack(alignment: .leading) {
             Text(launch.provider)
                 .font(.headline)
-                .foregroundColor(ThemeColors.brightyellow)
+                .foregroundColor(ThemeColors.brightYellow)
                 .lineLimit(2)
                 .padding([.leading, .top], Constants.padding)
 
@@ -244,7 +201,7 @@ struct LaunchDetailView: View {
                     Image(systemName: showFullMissionOverview ? "chevron.up" : "chevron.down")
                         .font(.caption)
                 }
-                .foregroundColor(ThemeColors.brightyellow)
+                .foregroundColor(ThemeColors.brightYellow)
             }
         }
     }
@@ -271,7 +228,7 @@ struct LaunchDetailView: View {
                     }
                     .padding(8)
                     .frame(maxWidth: .infinity)
-                    .background(ThemeColors.brightyellow)
+                    .background(ThemeColors.brightYellow)
                     .foregroundColor(ThemeColors.spaceBlack)
                     .cornerRadius(Constants.cornerRadius)
                 }
@@ -311,7 +268,7 @@ struct LaunchDetailView: View {
             .fill(ThemeColors.darkGray)
             .overlay {
                 ProgressView()
-                    .tint(ThemeColors.brightyellow)
+                    .tint(ThemeColors.brightYellow)
             }
             .aspectRatio(4/3, contentMode: .fill)
     }
@@ -337,4 +294,3 @@ struct LaunchDetailView: View {
         return true
     }
 }
-

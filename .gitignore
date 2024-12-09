@@ -1,6 +1,7 @@
 # Xcode
-DerivedData/
+.DS_Store
 build/
+DerivedData/
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -10,6 +11,16 @@ build/
 *.perspectivev3
 !default.perspectivev3
 xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
 
-# Exclude the scheme file containing the API key
+# Schemes
+*.xcscheme
+
+# Others
+*.swp
+*.lock
+
+# Exclude specific scheme files containing sensitive information
 RocketLaunchTracker.xcodeproj/xcshareddata/xcschemes/RocketLaunchTracker.xcscheme

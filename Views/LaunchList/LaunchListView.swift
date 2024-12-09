@@ -1,11 +1,11 @@
 import SwiftUI
 
 /// A list view displaying upcoming launches. Allows for searching, filtering, and viewing details.
-/// Integrates with a view model (`LaunchViewModel`) for fetching and filtering data.
 struct LaunchListView: View {
     @StateObject private var viewModel = LaunchViewModel()
     @State private var selectedLaunch: Launch?
     @State private var showingFilter = false
+    @State private var showLaunchesWithBadgesOnly = false
     
     // Common spacing and padding constants
     private let horizontalPadding: CGFloat = 16
@@ -20,11 +20,9 @@ struct LaunchListView: View {
                 
                 ScrollView {
                     LazyVStack(spacing: cardSpacing) {
-                        // Display filtered launches
-                        ForEach(viewModel.filteredLaunches) { launch in
+                        ForEach(filteredLaunches) { launch in
                             LaunchCard(launch: launch)
                                 .onTapGesture {
-                                    // Present the detail view when a card is tapped
                                     selectedLaunch = launch
                                 }
                                 .padding(.horizontal, horizontalPadding)
@@ -49,11 +47,9 @@ struct LaunchListView: View {
                         .presentationDetents([.large])
                 }
                 .refreshable {
-                    // Pull-to-refresh to fetch new launches
                     await viewModel.fetchLaunches()
                 }
                 .task {
-                    // Initial data load if needed
                     if viewModel.filteredLaunches.isEmpty {
                         await viewModel.fetchLaunches()
                     }
@@ -63,14 +59,24 @@ struct LaunchListView: View {
         .accessibilityLabel("List of upcoming rocket launches.")
     }
     
+    /// Filters launches based on whether the user has enabled showing only launches with badges.
+    private var filteredLaunches: [Launch] {
+        showLaunchesWithBadgesOnly
+            ? viewModel.filteredLaunches.filter { !($0.badges?.isEmpty ?? true) }
+            : viewModel.filteredLaunches
+    }
+    
     // MARK: - Toolbar Content
-    /// A toolbar button to present filtering options.
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigationBarLeading) {
+            Toggle("Notable Launches", isOn: $showLaunchesWithBadgesOnly)
+                .toggleStyle(SwitchToggleStyle(tint: ThemeColors.brightYellow))
+        }
         ToolbarItem(placement: .navigationBarTrailing) {
             Button(action: { showingFilter = true }) {
                 Image(systemName: "line.3.horizontal.decrease.circle")
-                    .foregroundColor(ThemeColors.brightyellow)
+                    .foregroundColor(ThemeColors.brightYellow)
                     .font(.title2)
                     .accessibilityLabel("Filter launches")
             }
@@ -78,7 +84,6 @@ struct LaunchListView: View {
     }
     
     // MARK: - Overlay Content
-    /// Displays loading and error overlays when appropriate.
     @ViewBuilder
     private var overlayContent: some View {
         if viewModel.isLoading {
@@ -90,23 +95,20 @@ struct LaunchListView: View {
                 Task { await viewModel.fetchLaunches() }
             }
             .transition(.opacity)
-            // A concise accessibility label for the error state
             .accessibilityLabel("An error occurred while loading launches.")
-            // Use the error string directly since it's not an Error type
             .accessibilityHint("Error details: \(error)")
         }
     }
     
-    /// A loading state overlay indicating data is being fetched.
+    /// Displays a loading overlay when fetching launches.
     private var loadingOverlay: some View {
-        ProgressView()
+        ProgressView("Loading launches...")
             .scaleEffect(1.5)
-            .tint(ThemeColors.brightyellow)
+            .tint(ThemeColors.brightYellow)
             .background(
                 ThemeColors.spaceBlack
                     .opacity(0.7)
                     .edgesIgnoringSafeArea(.all)
             )
-            .accessibilityLabel("Loading upcoming launches...")
     }
 }

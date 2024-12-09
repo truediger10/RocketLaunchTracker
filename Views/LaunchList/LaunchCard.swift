@@ -1,7 +1,7 @@
+// Inside LaunchCard.swift
+
 import SwiftUI
 
-/// A card representing a single rocket launch, displaying an image, status, and description.
-/// This component is designed to be displayed in a list or grid of upcoming launches.
 struct LaunchCard: View {
     let launch: Launch
     
@@ -15,18 +15,22 @@ struct LaunchCard: View {
         static let descriptionToggleThreshold = 100
         static let animationDuration = 0.4
         static let outlineWidth: CGFloat = 1
+        static let shareButtonPadding: CGFloat = 12 // New constant for share button padding
     }
     
     // MARK: - State
     @State private var hasAppeared = false
     @State private var imageLoaded = false
     @State private var showFullDescription = false
+    @State private var isShareSheetPresented = false // New State Variable
+    @State private var isShareButtonPressed = false // New State Variable for Button Press Animation
     
     // MARK: - Body
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             imageSection
             contentSection
+            // Removed shareButton from here
         }
         .background(ThemeColors.spaceBlack)
         .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius))
@@ -35,8 +39,8 @@ struct LaunchCard: View {
                 .stroke(ThemeColors.darkGray.opacity(0.5), lineWidth: Constants.outlineWidth)
         )
         .shadow(color: .black.opacity(0.07), radius: 10, x: 0, y: 4)
-        .scaleEffect(hasAppeared ? 1.0 : 0.98)
-        .opacity(hasAppeared ? 1.0 : 0.0)
+        .rotationEffect(hasAppeared ? .degrees(0) : .degrees(-5))
+        .opacity(hasAppeared ? 1.0 : 0.7)
         .onAppear {
             // Animate card appearance using a spring animation
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0.2)) {
@@ -47,28 +51,119 @@ struct LaunchCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(launch.name) launch card.")
         .padding(.vertical, Constants.verticalPadding)
+        // Present the Share Sheet when isShareSheetPresented is true
+        .sheet(isPresented: $isShareSheetPresented) {
+            ShareSheet(activityItems: shareContent)
+        }
+    }
+    
+    // MARK: - Share Content
+    private var shareContent: [Any] {
+        let launchDetails = """
+        🚀 Launch: \(launch.name)
+        📅 Date: \(launch.formattedDate)
+        📍 Location: \(launch.location)
+        
+        \(launch.shortDescription)
+        
+        Learn more at: https://yourapp.com/launch/\(launch.id)
+        """
+        
+        if let imageURLString = launch.imageURL, let url = URL(string: imageURLString) {
+            return [launchDetails, url]
+        }
+        
+        return [launchDetails]
+    }
+    
+    // MARK: - Share Button (Overlayed on Image)
+    private var shareButton: some View {
+        Button(action: {
+            isShareSheetPresented = true
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+        }) {
+            HStack(spacing: 4) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 16, weight: .bold)) // Adjusted icon size for consistency
+                Text("Share")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+            }
+            .padding(8)
+            .foregroundColor(ThemeColors.brightYellow)
+            .frame(minWidth: 44, minHeight: 44) // Ensure sufficient touch target
+            .scaleEffect(isShareButtonPressed ? 0.95 : 1.0)
+            .animation(.spring(), value: isShareButtonPressed)
+            .background(Color.black.opacity(0.3))
+            .cornerRadius(8)
+            .shadow(radius: 2)
+            .accessibilityLabel("Share launch details")
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    isShareButtonPressed = true
+                }
+                .onEnded { _ in
+                    isShareButtonPressed = false
+                }
+        )
+        .padding(Constants.shareButtonPadding)
     }
     
     // MARK: - Image Section
-    /// The top section that displays the launch image overlaid with a gradient, mission name, and status.
+    /// The top section that displays the launch image overlaid with a gradient, mission name, status, and badges.
     @ViewBuilder
     private var imageSection: some View {
         ZStack(alignment: .topLeading) {
             launchImage
+                .cornerRadius(Constants.cornerRadius)
+                .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 2) // Rounded corners and shadow
+            
             gradientOverlay
             
-            VStack {
-                HStack {
-                    missionNameLabel
-                        .accessibilityAddTraits(.isHeader) // Mark mission name as a heading for screen readers
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .center) { // Center elements vertically
+                    missionInfoLabel
                     Spacer()
-                    statusTag
                 }
                 .padding(Constants.padding)
                 
+                // Display badges if available
+                if let badges = launch.badges, !badges.isEmpty {
+                    HStack(spacing: 8) { // Use HStack to layout multiple badges
+                        ForEach(badges) { badge in
+                            BadgeView(badge: badge)
+                        }
+                    }
+                    .padding([.horizontal, .bottom], Constants.padding)
+                }
+                
                 Spacer()
             }
+            
+            // Share button overlayed at the bottom-right corner of the image
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    shareButton
+                }
+            }
         }
+    }
+    
+    /// Mission provider displayed above the mission name.
+    private var missionProviderLabel: some View {
+        Text(launch.provider)
+            .font(.caption) // Adjusted font size for better hierarchy
+            .fontWeight(.regular)
+            .foregroundColor(ThemeColors.lightGray)
+            .lineLimit(1)
+            .accessibilityLabel("Mission provider: \(launch.provider)")
     }
     
     /// Asynchronously loads and displays the launch image, showing placeholders during loading/failure states.
@@ -117,19 +212,34 @@ struct LaunchCard: View {
     }
     
     /// Mission name displayed at the top of the image section.
-    private var missionNameLabel: some View {
-        Text(launch.name)
-            .font(.headline)
-            .foregroundColor(ThemeColors.brightyellow)
-            .lineLimit(2)
-            .accessibilityHint("Name of the mission.")
-    }
-    
-    /// A status tag representing the launch status.
-    private var statusTag: some View {
-        LaunchStatusTag(status: launch.status)
-            .accessibilityHint("Launch status indicator.")
-    }
+    private var heroOverlayContent: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                missionInfoLabel
+                    .padding([.leading, .top], Constants.padding)
+
+                LaunchStatusTag(status: launch.status)
+                    .padding(.leading, Constants.padding)
+
+                Spacer()
+
+                Text(launch.timeUntilLaunch)
+                    .font(.subheadline)
+                    .foregroundColor(ThemeColors.almostWhite)
+                    .padding([.leading, .bottom], Constants.padding)
+            }
+        }
+    private var missionInfoLabel: some View {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(launch.provider)
+                    .font(.headline)
+                    .foregroundColor(ThemeColors.brightYellow)
+
+                Text(launch.name)
+                    .font(.title2.bold())
+                    .foregroundColor(ThemeColors.almostWhite)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     
     // MARK: - Content Section
     /// Displays the description and additional launch details below the image.
@@ -145,7 +255,7 @@ struct LaunchCard: View {
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(launch.shortDescription)
-                .font(.subheadline)
+                .font(.subheadline) // Adjusted font for better readability
                 .foregroundColor(ThemeColors.lightGray)
                 .lineSpacing(2)
                 .multilineTextAlignment(.leading)
@@ -168,7 +278,7 @@ struct LaunchCard: View {
         } label: {
             Text(showFullDescription ? "Show Less" : "Show More")
                 .font(.caption)
-                .foregroundColor(ThemeColors.brightyellow)
+                .foregroundColor(ThemeColors.brightYellow)
         }
         .accessibilityLabel("Toggle full description")
     }
@@ -181,13 +291,13 @@ struct LaunchCard: View {
                 value: launch.formattedDate,
                 icon: "calendar"
             )
-            Divider().background(ThemeColors.darkGray.opacity(0.3))
+            Divider().background(ThemeColors.darkGray.opacity(0.6)) // Adjusted opacity for better contrast
             DetailItem(
                 label: "Location",
                 value: launch.location,
                 icon: "mappin.and.ellipse"
             )
-            Divider().background(ThemeColors.darkGray.opacity(0.3))
+            Divider().background(ThemeColors.darkGray.opacity(0.6))
             DetailItem(
                 label: "Time Until Launch",
                 value: launch.timeUntilLaunch,
@@ -201,27 +311,32 @@ struct LaunchCard: View {
     /// Placeholder shown while the launch image is being loaded.
     private var loadingPlaceholder: some View {
         ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [ThemeColors.darkGray, ThemeColors.midGray]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .opacity(0.85)
+            RoundedRectangle(cornerRadius: Constants.cornerRadius)
+                .fill(ThemeColors.darkGray.opacity(0.85))
+                .shadow(radius: 2)
             
             VStack(spacing: 10) {
                 ShimmerView(width: 160, height: 24)
+                    .cornerRadius(8)
+                    .shadow(radius: 2)
+                ProgressView() // Added Progress Indicator
+                    .progressViewStyle(CircularProgressViewStyle(tint: ThemeColors.brightYellow))
+                    .scaleEffect(1.5)
                 Text("Loading Launch...")
                     .font(.footnote.bold())
-                    .foregroundColor(ThemeColors.brightyellow.opacity(0.9))
+                    .foregroundColor(ThemeColors.brightYellow.opacity(0.9))
             }
         }
+        .cornerRadius(Constants.cornerRadius)
+        .shadow(radius: 2)
         .accessibilityHidden(true)
     }
     
     /// Placeholder shown if the image fails to load.
     private var errorPlaceholder: some View {
-        Rectangle()
+        RoundedRectangle(cornerRadius: Constants.cornerRadius)
             .fill(ThemeColors.darkGray)
+            .shadow(radius: 2)
             .overlay(
                 VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill")

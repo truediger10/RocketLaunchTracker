@@ -35,7 +35,19 @@ struct ThemeColors {
     static let lunarRock = Color(hex: "7A7D7C")
     
     /// A bright yellow for calls-to-action, highlights, or emphasis on dark backgrounds.
-    static let brightyellow = Color(hex: "D7FF00")
+    static let brightYellow = Color(hex: "D7FF00")
+    
+    /// An orange color used for notable badges.
+    static let orange = Color(hex: "FFA500") // Orange
+    
+    /// A purple color used for exclusive badges.
+    static let purple = Color(hex: "800080") // Purple
+    
+    /// A red color used for live badges.
+    static let red = Color(hex: "FF0000") // Red
+    
+    /// A blue color used for first launch badges.
+    static let blue = Color(hex: "0000FF") // Blue
 }
 
 /**

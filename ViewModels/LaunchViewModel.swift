@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 /// A view model that manages the state and business logic for the rocket launch list.
 @MainActor
@@ -73,6 +74,10 @@ class LaunchViewModel: ObservableObject {
         }
         
         let existingLaunch = launches[index]
+        let updatedBadges = existingLaunch.badges ?? []
+        // If enrichment affects badges, adjust here. Otherwise, keep existing badges.
+        // For now, we'll keep existing badges.
+        
         launches[index] = Launch(
             id: existingLaunch.id,
             name: existingLaunch.name,
@@ -86,7 +91,8 @@ class LaunchViewModel: ObservableObject {
             detailedDescription: enrichment.detailedDescription,
             orbit: existingLaunch.orbit,
             wikiURL: existingLaunch.wikiURL,
-            twitterURL: existingLaunch.twitterURL
+            twitterURL: existingLaunch.twitterURL,
+            badges: updatedBadges // Assign badges as existing or updated
         )
         print("Launch updated with enriched data for ID: \(launchId)")
     }
