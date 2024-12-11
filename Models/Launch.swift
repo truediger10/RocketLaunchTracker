@@ -2,39 +2,21 @@
 
 import Foundation
 
-struct Launch: Identifiable, Codable {
+struct Launch: Identifiable, Codable, Sendable {
     let id: String
     let name: String
-    let net: Date? // Changed from 'launchDate' to 'net'
-    let status: LaunchStatus
-    let rocket: Rocket
+    let net: Date?
+    var status: LaunchStatus
+    let rocket: String
     let provider: String
     let location: String
     let imageURL: String?
-    let shortDescription: String?
-    let detailedDescription: String?
+    var shortDescription: String?    // Changed to var
+    var detailedDescription: String? // Changed to var
     let orbit: String?
     let wikiURL: String?
     let twitterURL: String?
     let badges: [Badge]?
-    
-    // Custom CodingKeys to map 'net' to 'launchDate'
-    enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case net
-        case status
-        case rocket
-        case provider
-        case location
-        case imageURL
-        case shortDescription
-        case detailedDescription
-        case orbit
-        case wikiURL
-        case twitterURL
-        case badges
-    }
     
     var formattedDate: String {
         guard let date = net else { return "Date not available" }
@@ -57,32 +39,82 @@ struct Launch: Identifiable, Codable {
         return "\(days)d \(hours)h \(minutes)m"
     }
     
-    /// Computed property for rocket name.
     var rocketName: String {
-        rocket.configuration.name
+        rocket
     }
     
-    /// Computed property for launch date.
     var launchDate: Date? {
         net
     }
 }
 
-struct Rocket: Codable {
-    let id: String
-    let configuration: RocketConfiguration
-}
-
-struct RocketConfiguration: Codable {
-    let id: String
-    let name: String
-    let family: String
-    let fullName: String
+// Extension to map SpaceDevsLaunch to Launch
+extension SpaceDevsLaunch {
+    func toAppLaunch(withEnrichment enrichment: LaunchEnrichment? = nil) -> Launch {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime]
+        let launchDate = dateFormatter.date(from: net) ?? Date()
+        
+        let mappedStatus: LaunchStatus = {
+            switch status.name.lowercased() {
+            case "go for launch": return .upcoming
+            case "in flight": return .launching
+            case "launch successful": return .successful
+            case "launch failure": return .failed
+            case "launch delayed": return .delayed
+            case "launch cancelled": return .cancelled
+            default: return .unknown
+            }
+        }()
+        
+        let badges = determineBadges(mappedStatus: mappedStatus)
+        
+        return Launch(
+            id: id,
+            name: name,
+            net: launchDate,
+            status: mappedStatus,
+            rocket: rocket.configuration.full_name,
+            provider: launch_service_provider.name,
+            location: pad.location.name,
+            imageURL: image?.image_url,
+            shortDescription: enrichment?.shortDescription ?? mission?.description ?? "No description available",
+            detailedDescription: enrichment?.detailedDescription ?? mission?.description ?? "No detailed description available",
+            orbit: mission?.orbit?.name,
+            wikiURL: pad.wiki_url,
+            twitterURL: buildTwitterURL(),
+            badges: badges.isEmpty ? nil : badges
+        )
+    }
     
-    enum CodingKeys: String, CodingKey {
-        case id
-        case name
-        case family
-        case fullName = "full_name"
+    private func determineBadges(mappedStatus: LaunchStatus) -> [Badge] {
+        var badges: [Badge] = []
+        
+        if mappedStatus == .launching {
+            badges.append(.live)
+        }
+        
+        if self.rocket.configuration.name.lowercased().contains("exclusive") {
+            badges.append(.exclusive)
+        }
+        
+        if let missionDescription = mission?.description?.lowercased(),
+           missionDescription.contains("maiden") || missionDescription.contains("first") {
+            badges.append(.firstLaunch)
+        }
+        
+        if let missionDescription = mission?.description?.lowercased(),
+           missionDescription.contains("national security") {
+            badges.append(.notable)
+        }
+        
+        return badges
+    }
+    
+    private func buildTwitterURL() -> String? {
+        guard let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return nil
+        }
+        return "https://twitter.com/search?q=\(encodedName)"
     }
 }
