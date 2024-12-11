@@ -13,20 +13,21 @@ struct TweetButtonView: View {
             shareOnTwitter()
         }) {
             HStack {
-                Image(systemName: "bird.fill")
+                Image("TwitterBird") // Ensure this matches the name in Assets
                     .resizable()
                     .frame(width: 20, height: 16)
-                    .foregroundColor(.white)
                 
                 Text("Tweet")
                     .font(.headline)
+                    .fontWeight(.semibold)
                     .foregroundColor(.white)
             }
             .padding()
             .frame(maxWidth: .infinity)
-            .background(Color.blue)
-            .cornerRadius(8)
+            .background(Color(red: 29/255, green: 161/255, blue: 242/255)) // Twitter Blue
+            .cornerRadius(25)
         }
+        .accessibilityLabel("Share on Twitter")
     }
     
     private func shareOnTwitter() {
@@ -52,7 +53,7 @@ struct TweetButtonView: View {
         }
         
         if let twitterURL = URL(string: twitterURLString) {
-            UIApplication.shared.open(twitterURL)
+            UIApplication.shared.open(twitterURL, options: [:], completionHandler: nil)
         }
     }
 }
@@ -63,7 +64,7 @@ struct TweetButtonView_Previews: PreviewProvider {
             text: "Check out this amazing rocket launch!",
             url: URL(string: "https://example.com/launch"),
             hashtags: "RocketLaunch,Space",
-            via: "YourTwitterHandle"
+            via: "YourTwitterHandle" // Replace with your actual Twitter handle
         )
         .padding()
         .previewLayout(.sizeThatFits)

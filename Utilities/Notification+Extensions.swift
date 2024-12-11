@@ -1,4 +1,5 @@
-// Notification+Extensions.swift
+// Utilities/Notification+Extensions.swift
+
 import Foundation
 
 /**

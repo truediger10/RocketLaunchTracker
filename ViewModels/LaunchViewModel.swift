@@ -107,6 +107,7 @@ class LaunchViewModel: ObservableObject {
                 }
                 launches.append(contentsOf: newLaunches)
                 hasMoreLaunches = !moreLaunches.isEmpty
+                print("Appended \(newLaunches.count) new launches. hasMoreLaunches: \(hasMoreLaunches)")
             } else {
                 print("No additional launches to fetch")
                 hasMoreLaunches = false
@@ -177,9 +178,4 @@ class LaunchViewModel: ObservableObject {
     private func applyFilters(query: String, criteria: LaunchCriteria) {
         objectWillChange.send()
     }
-}
-
-// MARK: - Notification Names
-extension Notification.Name {
-    static let launchEnrichmentUpdated = Notification.Name("launchEnrichmentUpdated")
 }

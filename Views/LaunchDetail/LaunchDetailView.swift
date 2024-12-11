@@ -240,14 +240,17 @@ struct LaunchDetailView: View {
     }
 
     /// The share section containing the Tweet button.
+    // Views/LaunchDetail/LaunchDetailView.swift
+    /// The share section containing the Tweet button.
     @ViewBuilder
     private func shareSection(url: URL) -> some View {
         TweetButtonView(
+            text: "Check out this launch: \(launch.name)", // Providing dynamic text
             url: url,
-            text: "Check out this launch!",
-            showCount: false
+            hashtags: "RocketLaunch,Space", // Provide relevant hashtags
+            via: "YourTwitterHandle" // Replace with your actual Twitter handle
         )
-        .frame(height: 120)
+        .frame(height: 50) // Adjust height as needed
         .padding(.top, 8)
     }
 
