@@ -1,3 +1,5 @@
+// Services/OpenAIService.swift
+
 import Foundation
 
 /// Errors specific to OpenAI service interactions.
@@ -136,7 +138,7 @@ actor OpenAIService: @unchecked Sendable {
                 if attempt == retries {
                     throw OpenAIServiceError.rateLimited
                 }
-                print("Retrying after \(delay / 1_000_000_000) seconds...")
+                print("Retrying after \(Double(delay) / 1_000_000_000) seconds...")
                 try await executeRetryDelay(attempt: attempt, delay: delay)
                 delay = min(delay * 2, Constants.maxDelay)
                 attempt += 1
@@ -155,7 +157,7 @@ actor OpenAIService: @unchecked Sendable {
     private func executeRetryDelay(attempt: Int, delay: UInt64) async throws {
         let jitter = UInt64.random(in: 0...100_000_000)
         let totalDelay = min(delay, Constants.maxDelay) + jitter
-        print("Waiting for \(totalDelay / 1_000_000_000) seconds before retrying...")
+        print("Waiting for \(Double(totalDelay) / 1_000_000_000) seconds before retrying...")
         try await Task.sleep(nanoseconds: totalDelay)
     }
     

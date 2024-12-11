@@ -26,6 +26,7 @@ enum APIError: LocalizedError {
     case networkError(Error)
     case processingError
     case dataConversionError
+    case unknownError
     
     /// Provides a user-friendly description for each error case, suitable for display to end-users.
     var errorDescription: String? {
@@ -46,6 +47,8 @@ enum APIError: LocalizedError {
             return "There was a problem processing the data from the server."
         case .dataConversionError:
             return "The received data could not be converted into the required format."
+        case .unknownError:
+            return "An unknown error occurred."
         }
     }
 }

@@ -1,20 +1,27 @@
+// Services/APIManager.swift
+
 import Foundation
 
 /// Manages API interactions, including fetching launches and handling enrichments.
 actor APIManager {
     static let shared = APIManager()
-    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=50"
+    
+    // MARK: - Constants
+    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/"
     private let maxRetries = 3
     private let initialRetryDelay: UInt64 = 500_000_000 // 0.5 seconds
     
+    // MARK: - Dependencies
     private let cache: CacheManager
     private let openAIService: OpenAIService
     private let urlSession: URLSession
     private let enrichmentQueue: TaskQueue
     
+    // MARK: - State
     private var nextURLString: String?
     private var isEnrichingBatch = false
     
+    // MARK: - Initialization
     private init(
         cache: CacheManager = .shared,
         openAIService: OpenAIService = .shared,
@@ -28,6 +35,8 @@ actor APIManager {
         
         print("APIManager initialized with baseURL: \(baseURL)")
     }
+    
+    // MARK: - Public Methods
     
     /// Fetches upcoming launches, utilizing cache if available.
     /// - Returns: An array of `Launch` objects.
@@ -64,19 +73,15 @@ actor APIManager {
         let response = try await fetchFromSpaceDevs(urlString: nextURL)
         let launches = response.results.map { $0.toAppLaunch() }
         print("Fetched \(launches.count) more launches from API")
+        
+        await cache.cacheLaunches(launches)
+        print("Cached additional launches")
         startBackgroundEnrichment(for: launches)
         
         return launches
     }
     
-    /// Initiates background enrichment for a batch of launches.
-    /// - Parameter launches: The launches to enrich.
-    private func startBackgroundEnrichment(for launches: [Launch]) {
-        print("Starting background enrichment for \(launches.count) launches")
-        Task.detached(priority: .background) {
-            await self.enrichUnenrichedLaunches(launches)
-        }
-    }
+    // MARK: - Private Methods
     
     /// Fetches launches from the SpaceDevs API with retry logic.
     /// - Parameter urlString: The URL string to fetch data from.
@@ -88,29 +93,62 @@ actor APIManager {
             throw APIError.invalidURL
         }
         
-        do {
-            let (data, response) = try await fetchWithRetry(url: url)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("Invalid response received from URL: \(urlString)")
-                throw APIError.invalidResponse
+        var attempt = 1
+        var delay = initialRetryDelay
+        
+        while attempt <= maxRetries {
+            do {
+                let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 30)
+                let (data, response) = try await urlSession.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("Invalid response received from URL: \(urlString)")
+                    throw APIError.invalidResponse
+                }
+                
+                switch httpResponse.statusCode {
+                case 200...299:
+                    let decodedResponse = try JSONDecoder().decode(SpaceDevsResponse.self, from: data)
+                    self.nextURLString = decodedResponse.next
+                    print("Received successful response with status code: \(httpResponse.statusCode)")
+                    return decodedResponse
+                case 429:
+                    print("Rate limited by API with status code: 429")
+                    throw APIError.rateLimited
+                default:
+                    print("Server error with status code: \(httpResponse.statusCode)")
+                    throw APIError.serverError(code: httpResponse.statusCode)
+                }
+            } catch APIError.rateLimited {
+                if attempt == maxRetries {
+                    print("Max retries reached due to rate limiting.")
+                    throw APIError.rateLimited
+                }
+                print("Rate limited. Retrying after \(Double(delay) / 1_000_000_000) seconds...")
+                try await Task.sleep(nanoseconds: delay)
+                delay *= 2
+                attempt += 1
+            } catch {
+                if attempt == maxRetries {
+                    print("Max retries reached. Throwing error.")
+                    throw APIError.networkError(error)
+                }
+                print("Attempt \(attempt) failed with error: \(error). Retrying after \(Double(delay) / 1_000_000_000) seconds...")
+                try await Task.sleep(nanoseconds: delay)
+                delay *= 2
+                attempt += 1
             }
-            
-            switch httpResponse.statusCode {
-            case 200...299:
-                let decodedResponse = try JSONDecoder().decode(SpaceDevsResponse.self, from: data)
-                self.nextURLString = decodedResponse.next
-                print("Received successful response with status code: \(httpResponse.statusCode)")
-                return decodedResponse
-            case 429:
-                print("Rate limited by API with status code: 429")
-                throw APIError.rateLimited
-            default:
-                print("Server error with status code: \(httpResponse.statusCode)")
-                throw APIError.serverError(code: httpResponse.statusCode)
-            }
-        } catch {
-            print("Error fetching from SpaceDevs API: \(error)")
-            throw error
+        }
+        
+        throw APIError.unknownError
+    }
+    
+    /// Initiates background enrichment for a batch of launches.
+    /// - Parameter launches: The launches to enrich.
+    private func startBackgroundEnrichment(for launches: [Launch]) {
+        print("Starting background enrichment for \(launches.count) launches")
+        Task.detached(priority: .background) {
+            await self.enrichUnenrichedLaunches(launches)
         }
     }
     
@@ -150,50 +188,24 @@ actor APIManager {
         print("Starting enrichment for launch ID: \(launch.id)")
         do {
             try await enrichmentQueue.enqueue {
-                let enrichment = try await self.openAIService.enrichLaunch(launch)
-                await self.cache.cacheEnrichment(enrichment, for: launch.id)
-                
-                NotificationCenter.default.post(
-                    name: .launchEnrichmentUpdated,
-                    object: nil,
-                    userInfo: ["launchId": launch.id]
-                )
-                print("Enrichment completed for launch ID: \(launch.id)")
+                do {
+                    let enrichment = try await self.openAIService.enrichLaunch(launch)
+                    await self.cache.cacheEnrichment(enrichment, for: launch.id)
+                    
+                    NotificationCenter.default.post(
+                        name: .launchEnrichmentUpdated,
+                        object: nil,
+                        userInfo: ["launchId": launch.id]
+                    )
+                    print("Enrichment completed for launch ID: \(launch.id)")
+                } catch {
+                    print("Failed to enrich launch ID: \(launch.id) with error: \(error)")
+                    // Optionally handle fallback or retry
+                }
             }
         } catch {
-            print("Failed to enrich launch ID: \(launch.id) with error: \(error)")
-            // Error handled silently as enrichment is non-critical
-        }
-    }
-    
-    /// Fetches data from a URL with retry logic.
-    /// - Parameter url: The URL to fetch data from.
-    /// - Returns: A tuple containing `Data` and `URLResponse`.
-    private func fetchWithRetry(url: URL) async throws -> (Data, URLResponse) {
-        var delay = initialRetryDelay
-        var attempt = 1
-        
-        while true {
-            do {
-                print("Attempt \(attempt) to fetch URL: \(url.absoluteString)")
-                let request = URLRequest(url: url,
-                                         cachePolicy: .returnCacheDataElseLoad,
-                                         timeoutInterval: 30)
-                let result = try await urlSession.data(for: request)
-                print("Successfully fetched data on attempt \(attempt)")
-                return result
-            } catch {
-                print("Attempt \(attempt) failed with error: \(error)")
-                guard attempt < maxRetries else {
-                    print("Max retries reached. Throwing error.")
-                    throw APIError.networkError(error)
-                }
-                
-                print("Retrying after \(delay / 1_000_000_000) seconds...")
-                try await Task.sleep(nanoseconds: delay)
-                delay *= 2
-                attempt += 1
-            }
+            print("Failed to enqueue enrichment for launch ID: \(launch.id) with error: \(error)")
+            // Handle enqueue failure if necessary
         }
     }
 }
