@@ -1,4 +1,5 @@
 // Views/LaunchList/FilterView.swift
+
 import SwiftUI
 
 struct FilterView: View {
@@ -6,60 +7,53 @@ struct FilterView: View {
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedStatus: LaunchStatus?
-    @State private var startDate: Date?
-    @State private var endDate: Date?
+    @State private var selectedProvider: String = ""
+    @State private var selectedRocketName: String = ""
+    @State private var startDate: Date = Date()
+    @State private var endDate: Date = Date()
     @State private var filterLocation: String = ""
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Date Range")) {
-                    DatePicker("Start Date", selection: Binding(
-                        get: { startDate ?? Date() },
-                        set: { startDate = $0 }
-                    ), displayedComponents: .date)
-                    
-                    DatePicker("End Date", selection: Binding(
-                        get: { endDate ?? Date().addingTimeInterval(24*60*60) },
-                        set: { endDate = $0 }
-                    ), displayedComponents: .date)
-                }
-                
-                Section(header: Text("Status")) {
-                    Picker("Status", selection: $selectedStatus) {
-                        Text("Any").tag(Optional<LaunchStatus>.none)
-                        Text("Upcoming").tag(Optional(LaunchStatus.upcoming))
-                        Text("Launching").tag(Optional(LaunchStatus.launching))
-                        Text("Successful").tag(Optional(LaunchStatus.successful))
-                        Text("Failed").tag(Optional(LaunchStatus.failed))
-                        Text("Delayed").tag(Optional(LaunchStatus.delayed))
-                        Text("Cancelled").tag(Optional(LaunchStatus.cancelled))
-                    }
-                }
-                
-                Section(header: Text("Location")) {
-                    TextField("Enter location keyword", text: $filterLocation)
-                }
+        Form {
+            Picker("Status", selection: $selectedStatus) {
+                Text("Any").tag(nil as LaunchStatus?)
+                Text("Upcoming").tag(LaunchStatus.upcoming as LaunchStatus?)
+                Text("Launching").tag(LaunchStatus.launching as LaunchStatus?)
+                Text("Successful").tag(LaunchStatus.successful as LaunchStatus?)
+                Text("Failed").tag(LaunchStatus.failed as LaunchStatus?)
+                Text("Delayed").tag(LaunchStatus.delayed as LaunchStatus?)
+                Text("Cancelled").tag(LaunchStatus.cancelled as LaunchStatus?)
             }
-            .navigationTitle("Filter Launches")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Apply") {
-                        criteria = LaunchCriteria(
-                            startDate: startDate,
-                            endDate: endDate,
-                            status: selectedStatus,
-                            location: filterLocation.isEmpty ? nil : filterLocation
-                        )
-                        dismiss()
-                    }
+            
+            TextField("Provider", text: $selectedProvider)
+            TextField("Rocket Name", text: $selectedRocketName)
+            
+            DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
+            DatePicker("End Date", selection: $endDate, displayedComponents: .date)
+            
+            TextField("Location", text: $filterLocation)
+        }
+        .navigationTitle("Filter Launches")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Apply") {
+                    applyFilters()
                 }
             }
         }
+    }
+    
+    private func applyFilters() {
+        // Ensure that startDate is before endDate
+        let dateRange = startDate <= endDate ? startDate...endDate : endDate...startDate
+        
+        criteria = LaunchCriteria(
+            status: selectedStatus,
+            provider: selectedProvider.isEmpty ? nil : selectedProvider,
+            rocketName: selectedRocketName.isEmpty ? nil : selectedRocketName,
+            launchDateRange: dateRange,
+            location: filterLocation.isEmpty ? nil : filterLocation
+        )
+        dismiss()
     }
 }

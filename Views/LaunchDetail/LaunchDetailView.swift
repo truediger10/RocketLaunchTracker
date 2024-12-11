@@ -158,13 +158,13 @@ struct LaunchDetailView: View {
     /// The details section displaying various launch details.
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            DetailItem(label: "Launch Date", value: launch.formattedDate, icon: "calendar")
+            DetailItem(label: "Launch Date", value: launch.formattedDate, icon: "calendar.day.timeline.left")
             DetailItem(label: "Location", value: launch.location, icon: "mappin.and.ellipse")
-            DetailItem(label: "Rocket", value: launch.rocketName, icon: "airplane")
+            DetailItem(label: "Rocket", value: launch.rocketName, icon: "paperplane.fill")
             if let orbit = launch.orbit {
-                DetailItem(label: "Orbit", value: orbit, icon: "circle.dashed")
+                DetailItem(label: "Orbit", value: orbit, icon: "globe.americas.fill")
             }
-            DetailItem(label: "Time Until Launch", value: launch.timeUntilLaunch, icon: "clock")
+            DetailItem(label: "Time Until Launch", value: launch.timeUntilLaunch, icon: "timer")
         }
     }
 
@@ -173,7 +173,7 @@ struct LaunchDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             missionOverviewHeader
 
-            Text(launch.detailedDescription)
+            Text(launch.detailedDescription ?? "No description available")
                 .foregroundColor(ThemeColors.lightGray)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineLimit(showFullMissionOverview ? nil : Constants.descriptionLineLimit)
@@ -278,7 +278,7 @@ struct LaunchDetailView: View {
         Rectangle()
             .fill(ThemeColors.darkGray)
             .overlay {
-                Image(systemName: "rocket.fill")
+                Image(systemName: "paperplane.fill")
                     .foregroundColor(ThemeColors.lunarRock)
                     .font(.system(size: 60))
             }

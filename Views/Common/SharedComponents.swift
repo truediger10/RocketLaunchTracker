@@ -1,124 +1,221 @@
 import SwiftUI
 
-/// Displays launch status with color-coded indicators.
-struct LaunchStatusTag: View {
-    let status: LaunchStatus
-
+/// Shared launch image view with consistent loading and error states
+struct LaunchImageView: View {
+    let imageURL: String?
+    let height: CGFloat
+    var onImageLoaded: (() -> Void)?
+    
     // MARK: - Constants
-    private let circleSize: CGFloat = 10 // Increased from 8 to 10 for better visibility
-    private let horizontalPadding: CGFloat = 12
-    private let verticalPadding: CGFloat = 6
-    private let cornerRadius: CGFloat = 12
-
+    private enum Constants {
+        static let gradientColors: [Color] = [
+            .clear,
+            ThemeColors.spaceBlack.opacity(0.3),
+            ThemeColors.spaceBlack.opacity(0.6),
+            ThemeColors.spaceBlack
+        ]
+        static let errorIconSize: CGFloat = 60
+        static let aspectRatio: CGFloat = 16/9
+        static let cornerRadius: CGFloat = 12
+    }
+    
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(status.color)
-                .frame(width: circleSize, height: circleSize)
-                .accessibilityHidden(true)
-
-            Text(status.displayText)
-                .font(.caption)
-                .foregroundColor(ThemeColors.almostWhite)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+        ZStack {
+            imageContent
+            gradientOverlay
         }
-        .padding(.horizontal, horizontalPadding)
-        .padding(.vertical, verticalPadding)
-        .background(ThemeColors.darkGray.opacity(0.8))
-        .cornerRadius(cornerRadius)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Launch Status: \(status.displayText)")
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius))
+    }
+    
+    private var imageContent: some View {
+        GeometryReader { geometry in
+            AsyncImage(url: URL(string: imageURL ?? "")) { phase in
+                switch phase {
+                case .empty:
+                    loadingPlaceholder
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                        .onAppear {
+                            onImageLoaded?()
+                        }
+                        .transition(.opacity)
+                case .failure:
+                    errorPlaceholder
+                @unknown default:
+                    EmptyView()
+                }
+            }
+        }
+    }
+    
+    private var gradientOverlay: some View {
+        LinearGradient(
+            gradient: Gradient(colors: Constants.gradientColors),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+    
+    private var loadingPlaceholder: some View {
+        ShimmerView(
+            width: UIScreen.main.bounds.width,
+            height: height
+        )
+    }
+    
+    private var errorPlaceholder: some View {
+        Rectangle()
+            .fill(ThemeColors.darkGray)
+            .overlay {
+                Image(systemName: "paperplane.fill")
+                    .foregroundColor(ThemeColors.lunarRock)
+                    .font(.system(size: Constants.errorIconSize))
+            }
     }
 }
 
-/// Displays a badge with specific styling.
-struct BadgeView: View {
-    let badge: Badge
 
-    // MARK: - Constants
-    private let horizontalPadding: CGFloat = 8
-    private let verticalPadding: CGFloat = 4
-    private let cornerRadius: CGFloat = 8
-
-    var body: some View {
-        Text(badge.displayText)
-            .font(.caption2)
-            .foregroundColor(.white)
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, verticalPadding)
-            .background(badge.color)
-            .cornerRadius(cornerRadius)
-            .accessibilityLabel("\(badge.displayText) badge")
-    }
-}
-
-/// Generic detail item component for displaying labeled information.
+/// Generic detail item component for displaying labeled information
 struct DetailItem: View {
-    // MARK: - Properties
     let label: String
     let value: String
     let icon: String?
     var iconColor: Color = ThemeColors.brightYellow
-
+    
     // MARK: - Constants
-    private let iconSize: CGFloat = 20 // Ensured consistent icon size
-    private let spacing: CGFloat = 8
-    private let lineSpacing: CGFloat = 2
-
+    private enum Constants {
+        static let iconSize: CGFloat = 20
+        static let spacing: CGFloat = 8
+        static let lineSpacing: CGFloat = 2
+    }
+    
     var body: some View {
-        HStack(alignment: .center, spacing: spacing) { // Ensured vertical centering
+        HStack(alignment: .center, spacing: Constants.spacing) {
             iconView
             contentView
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(value)")
     }
-
-    // MARK: - Subviews
+    
     @ViewBuilder
     private var iconView: some View {
         if let icon {
             Image(systemName: icon)
                 .foregroundColor(iconColor)
                 .font(.footnote)
-                .frame(width: iconSize, height: iconSize)
+                .frame(width: Constants.iconSize, height: Constants.iconSize)
                 .accessibilityHidden(true)
         }
     }
-
+    
     private var contentView: some View {
-        VStack(alignment: .leading, spacing: lineSpacing) {
+        VStack(alignment: .leading, spacing: Constants.lineSpacing) {
             Text(label)
                 .font(.caption)
                 .foregroundColor(ThemeColors.lightGray)
-
+            
             Text(value)
                 .font(.subheadline)
                 .foregroundColor(ThemeColors.almostWhite)
-                .lineSpacing(lineSpacing)
+                .lineSpacing(Constants.lineSpacing)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
 
-/// Animated shimmer effect for loading states.
+/// Shared content divider with consistent styling
+struct ContentDivider: View {
+    var body: some View {
+        Divider()
+            .background(ThemeColors.darkGray.opacity(0.6))
+    }
+}
+
+/// Expandable text section with show more/less functionality
+struct ExpandableText: View {
+    let text: String
+    let title: String
+    @Binding var isExpanded: Bool
+    var lineLimit: Int = 2
+    
+    @State private var textHeight: CGFloat = 0
+    @State private var limitedHeight: CGFloat = 0
+    @State private var hasOverflow: Bool = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(ThemeColors.almostWhite)
+                
+                Spacer()
+                
+                if hasOverflow {
+                    Button {
+                        withAnimation(.easeInOut) {
+                            isExpanded.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(isExpanded ? "Show Less" : "Show More")
+                                .font(.caption)
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.caption)
+                        }
+                        .foregroundColor(ThemeColors.brightYellow)
+                    }
+                }
+            }
+            
+            Text(text)
+                .foregroundColor(ThemeColors.lightGray)
+                .lineLimit(isExpanded ? nil : lineLimit)
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: HeightPreferenceKey.self,
+                            value: geometry.size.height
+                        )
+                    }
+                )
+                .onPreferenceChange(HeightPreferenceKey.self) { height in
+                    textHeight = height
+                    hasOverflow = textHeight > limitedHeight
+                }
+        }
+    }
+}
+
+private struct HeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+
+/// Animated shimmer effect for loading states
 struct ShimmerView: View {
-    // MARK: - Properties
     let width: CGFloat
     let height: CGFloat
     var duration: Double = 1.0
     var angle: Double = 20
-
+    
     @State private var move = false
-
-    // MARK: - Constants
+    
     private let gradient = Gradient(colors: [
-        .white.opacity(0.6),
         .white.opacity(0.1),
-        .white.opacity(0.6)
+        .white.opacity(0.3),
+        .white.opacity(0.1)
     ])
-
+    
     var body: some View {
         GeometryReader { geometry in
             LinearGradient(
@@ -126,45 +223,21 @@ struct ShimmerView: View {
                 startPoint: .leading,
                 endPoint: .trailing
             )
-            .frame(width: width, height: height)
-            .mask(Rectangle())
+            .frame(width: width * 2, height: height)
             .rotationEffect(.degrees(angle))
-            .offset(x: move ? geometry.size.width : -geometry.size.width)
+            .offset(x: move ? width : -width)
             .onAppear {
                 withAnimation(
                     .linear(duration: duration)
-                        .repeatForever(autoreverses: false)
+                    .repeatForever(autoreverses: false)
                 ) {
                     move.toggle()
                 }
             }
         }
         .frame(width: width, height: height)
-        .drawingGroup() // Enables Metal-backed rendering
+        .clipped()
+        .drawingGroup()
         .accessibilityHidden(true)
-    }
-}
-
-// MARK: - Preview Provider
-struct SharedComponents_Previews: PreviewProvider {
-    static var previews: some View {
-        VStack(spacing: 20) {
-            LaunchStatusTag(status: .successful)
-
-            DetailItem(
-                label: "Location",
-                value: "Kennedy Space Center",
-                icon: "location.fill"
-            )
-
-            ShimmerView(width: 200, height: 20)
-
-            BadgeView(badge: .live)
-            BadgeView(badge: .exclusive)
-            BadgeView(badge: .firstLaunch)
-        }
-        .padding()
-        .background(Color.black)
-        .previewLayout(.sizeThatFits)
     }
 }
