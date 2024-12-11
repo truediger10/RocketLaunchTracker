@@ -1,6 +1,7 @@
 // Views/Common/BadgeView.swift
 
 import SwiftUI
+import Foundation // Replace with your actual module name where Badge is defined
 
 struct BadgeView: View {
     let badge: Badge
@@ -35,5 +36,13 @@ struct BadgeView: View {
         case .notable:
             return ThemeColors.orange
         }
+    }
+}
+
+// Preview for SwiftUI Canvas
+struct BadgeView_Previews: PreviewProvider {
+    static var previews: some View {
+        BadgeView(badge: .live)
+            .padding()
     }
 }

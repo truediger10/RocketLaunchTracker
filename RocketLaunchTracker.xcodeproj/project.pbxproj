@@ -7,16 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		75B4717E2D0769E200193BAF /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 75B471742D0769E200193BAF /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		754999162D0A194200B05E4C /* RocketLaunchTrackerShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7549990C2D0A194200B05E4C /* RocketLaunchTrackerShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		75B4717C2D0769E200193BAF /* PBXContainerItemProxy */ = {
+		754999142D0A194200B05E4C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 75E8BF032CF2F45B00A40CB1 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 75B471732D0769E200193BAF;
-			remoteInfo = ShareExtension;
+			remoteGlobalIDString = 7549990B2D0A194200B05E4C;
+			remoteInfo = RocketLaunchTrackerShare;
 		};
 		75E8BF1D2CF2F45C00A40CB1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -41,7 +41,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				75B4717E2D0769E200193BAF /* ShareExtension.appex in Embed Foundation Extensions */,
+				754999162D0A194200B05E4C /* RocketLaunchTrackerShare.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -49,19 +49,19 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		75B471742D0769E200193BAF /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7549990C2D0A194200B05E4C /* RocketLaunchTrackerShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RocketLaunchTrackerShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E8BF0B2CF2F45B00A40CB1 /* RocketLaunchTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RocketLaunchTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E8BF1C2CF2F45C00A40CB1 /* RocketLaunchTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RocketLaunchTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E8BF262CF2F45C00A40CB1 /* RocketLaunchTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RocketLaunchTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		75B4717F2D0769E200193BAF /* Exceptions for "ShareExtension" folder in "ShareExtension" target */ = {
+		7549991A2D0A194200B05E4C /* Exceptions for "RocketLaunchTrackerShare" folder in "RocketLaunchTrackerShare" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 75B471732D0769E200193BAF /* ShareExtension */;
+			target = 7549990B2D0A194200B05E4C /* RocketLaunchTrackerShare */;
 		};
 		75B471852D076A5400193BAF /* Exceptions for "RocketLaunchTracker" folder in "RocketLaunchTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -73,12 +73,12 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		75B471752D0769E200193BAF /* ShareExtension */ = {
+		7549990D2D0A194200B05E4C /* RocketLaunchTrackerShare */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				75B4717F2D0769E200193BAF /* Exceptions for "ShareExtension" folder in "ShareExtension" target */,
+				7549991A2D0A194200B05E4C /* Exceptions for "RocketLaunchTrackerShare" folder in "RocketLaunchTrackerShare" target */,
 			);
-			path = ShareExtension;
+			path = RocketLaunchTrackerShare;
 			sourceTree = "<group>";
 		};
 		75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */ = {
@@ -132,7 +132,7 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		75B471712D0769E200193BAF /* Frameworks */ = {
+		754999092D0A194200B05E4C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -175,7 +175,7 @@
 				75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */,
 				75E8BF1F2CF2F45C00A40CB1 /* RocketLaunchTrackerTests */,
 				75E8BF292CF2F45C00A40CB1 /* RocketLaunchTrackerUITests */,
-				75B471752D0769E200193BAF /* ShareExtension */,
+				7549990D2D0A194200B05E4C /* RocketLaunchTrackerShare */,
 				75E8BF0C2CF2F45B00A40CB1 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -186,7 +186,7 @@
 				75E8BF0B2CF2F45B00A40CB1 /* RocketLaunchTracker.app */,
 				75E8BF1C2CF2F45C00A40CB1 /* RocketLaunchTrackerTests.xctest */,
 				75E8BF262CF2F45C00A40CB1 /* RocketLaunchTrackerUITests.xctest */,
-				75B471742D0769E200193BAF /* ShareExtension.appex */,
+				7549990C2D0A194200B05E4C /* RocketLaunchTrackerShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -194,26 +194,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		75B471732D0769E200193BAF /* ShareExtension */ = {
+		7549990B2D0A194200B05E4C /* RocketLaunchTrackerShare */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 75B471802D0769E200193BAF /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildConfigurationList = 754999172D0A194200B05E4C /* Build configuration list for PBXNativeTarget "RocketLaunchTrackerShare" */;
 			buildPhases = (
-				75B471702D0769E200193BAF /* Sources */,
-				75B471712D0769E200193BAF /* Frameworks */,
-				75B471722D0769E200193BAF /* Resources */,
+				754999082D0A194200B05E4C /* Sources */,
+				754999092D0A194200B05E4C /* Frameworks */,
+				7549990A2D0A194200B05E4C /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				75B471752D0769E200193BAF /* ShareExtension */,
+				7549990D2D0A194200B05E4C /* RocketLaunchTrackerShare */,
 			);
-			name = ShareExtension;
+			name = RocketLaunchTrackerShare;
 			packageProductDependencies = (
 			);
-			productName = ShareExtension;
-			productReference = 75B471742D0769E200193BAF /* ShareExtension.appex */;
+			productName = RocketLaunchTrackerShare;
+			productReference = 7549990C2D0A194200B05E4C /* RocketLaunchTrackerShare.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		75E8BF0A2CF2F45B00A40CB1 /* RocketLaunchTracker */ = {
@@ -228,7 +228,7 @@
 			buildRules = (
 			);
 			dependencies = (
-				75B4717D2D0769E200193BAF /* PBXTargetDependency */,
+				754999152D0A194200B05E4C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */,
@@ -302,7 +302,7 @@
 				LastSwiftUpdateCheck = 1610;
 				LastUpgradeCheck = 1610;
 				TargetAttributes = {
-					75B471732D0769E200193BAF = {
+					7549990B2D0A194200B05E4C = {
 						CreatedOnToolsVersion = 16.1;
 					};
 					75E8BF0A2CF2F45B00A40CB1 = {
@@ -335,13 +335,13 @@
 				75E8BF0A2CF2F45B00A40CB1 /* RocketLaunchTracker */,
 				75E8BF1B2CF2F45C00A40CB1 /* RocketLaunchTrackerTests */,
 				75E8BF252CF2F45C00A40CB1 /* RocketLaunchTrackerUITests */,
-				75B471732D0769E200193BAF /* ShareExtension */,
+				7549990B2D0A194200B05E4C /* RocketLaunchTrackerShare */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		75B471722D0769E200193BAF /* Resources */ = {
+		7549990A2D0A194200B05E4C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -372,7 +372,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		75B471702D0769E200193BAF /* Sources */ = {
+		754999082D0A194200B05E4C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -403,10 +403,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		75B4717D2D0769E200193BAF /* PBXTargetDependency */ = {
+		754999152D0A194200B05E4C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 75B471732D0769E200193BAF /* ShareExtension */;
-			targetProxy = 75B4717C2D0769E200193BAF /* PBXContainerItemProxy */;
+			target = 7549990B2D0A194200B05E4C /* RocketLaunchTrackerShare */;
+			targetProxy = 754999142D0A194200B05E4C /* PBXContainerItemProxy */;
 		};
 		75E8BF1E2CF2F45C00A40CB1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -421,15 +421,15 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		75B471812D0769E200193BAF /* Debug */ = {
+		754999182D0A194200B05E4C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MYZ525K59M;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = ShareExtension;
+				INFOPLIST_FILE = RocketLaunchTrackerShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RocketLaunchTrackerShare;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -438,7 +438,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.troyruediger.RocketLaunchTracker.ShareExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.troyruediger.RocketLaunchTracker.RocketLaunchTrackerShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -448,15 +448,15 @@
 			};
 			name = Debug;
 		};
-		75B471822D0769E200193BAF /* Release */ = {
+		754999192D0A194200B05E4C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MYZ525K59M;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = ShareExtension;
+				INFOPLIST_FILE = RocketLaunchTrackerShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RocketLaunchTrackerShare;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -465,7 +465,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.troyruediger.RocketLaunchTracker.ShareExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.troyruediger.RocketLaunchTracker.RocketLaunchTrackerShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -763,11 +763,11 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		75B471802D0769E200193BAF /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+		754999172D0A194200B05E4C /* Build configuration list for PBXNativeTarget "RocketLaunchTrackerShare" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				75B471812D0769E200193BAF /* Debug */,
-				75B471822D0769E200193BAF /* Release */,
+				754999182D0A194200B05E4C /* Debug */,
+				754999192D0A194200B05E4C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

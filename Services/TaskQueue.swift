@@ -1,3 +1,5 @@
+// Services/TaskQueue.swift
+
 import Foundation
 
 /// Errors that can occur during task queue operations
@@ -37,10 +39,10 @@ actor TaskQueue {
         var averageWaitTime: TimeInterval = 0
         var peakConcurrency: Int = 0
         
-        mutating func recordTaskCompletion(waitTime: TimeInterval) {
+        mutating func recordTaskCompletion(waitTime: TimeInterval, currentConcurrency: Int) {
             totalTasksProcessed += 1
             averageWaitTime = (averageWaitTime * Double(totalTasksProcessed - 1) + waitTime) / Double(totalTasksProcessed)
-            peakConcurrency = max(peakConcurrency, Int(waitTime))
+            peakConcurrency = max(peakConcurrency, currentConcurrency)
         }
     }
     
@@ -68,6 +70,7 @@ actor TaskQueue {
         }
         
         let startTime = Date()
+        // Removed 'currentConcurrency' as it was unused
         
         if running >= maxConcurrent {
             try await withCheckedThrowingContinuation { continuation in
@@ -89,7 +92,7 @@ actor TaskQueue {
                 next.continuation.resume(returning: ())
             }
             let waitTime = Date().timeIntervalSince(startTime)
-            metrics.recordTaskCompletion(waitTime: waitTime)
+            metrics.recordTaskCompletion(waitTime: waitTime, currentConcurrency: running)
         }
         
         return try await operation()
@@ -103,13 +106,7 @@ actor TaskQueue {
     
     // MARK: - Private Methods
     
-    /// Handles the resumption of the next task in the queue
-    private func resumeNextTask() {
-        if running < maxConcurrent, !queue.isEmpty {
-            let next = queue.removeFirst()
-            next.continuation.resume(returning: ())
-        }
-    }
+    // Removed 'resumeNextTask' as it's unused
 }
 
 /// Extension for additional functionalities if needed in the future

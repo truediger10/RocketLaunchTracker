@@ -3,48 +3,16 @@
 import Foundation
 import SwiftUI
 
-/// Represents different types of badges for launches.
-enum Badge: String, Codable, Identifiable {
-    case live = "Live"
-    case exclusive = "Exclusive"
-    case firstLaunch = "First Launch"
-    case notable = "Notable" // New badge type
-
-    var id: String { self.rawValue }
-
-    /// Provides the display text for the badge.
-    var displayText: String {
-        self.rawValue
-    }
-
-    /// Provides the background color for the badge based on its type.
-    var color: Color {
-        switch self {
-        case .live:
-            return ThemeColors.red
-        case .exclusive:
-            return ThemeColors.purple
-        case .firstLaunch:
-            return ThemeColors.blue
-        case .notable:
-            return ThemeColors.orange
-        }
-    }
-}
-
 /// Represents the status of a launch.
-enum LaunchStatus: String, Codable, Identifiable {
+enum LaunchStatus: String, Codable {
     case upcoming
     case launching
     case successful
     case failed
     case delayed
     case cancelled
-    case unknown // Added case
-
-    var id: String { self.rawValue }
-
-    /// Provides the display text for the launch status.
+    case unknown // Added 'unknown' case to handle undefined statuses
+    
     var displayText: String {
         switch self {
         case .upcoming:
@@ -63,24 +31,46 @@ enum LaunchStatus: String, Codable, Identifiable {
             return "Unknown"
         }
     }
-
-    /// Provides the color associated with each launch status.
+    
     var color: Color {
         switch self {
-        case .successful:
-            return ThemeColors.brightYellow
         case .upcoming:
-            return ThemeColors.neonBlue
+            return ThemeColors.orange
         case .launching:
-            return .green
+            return ThemeColors.orange
+        case .successful:
+            return ThemeColors.neonBlue
         case .failed:
-            return .red
+            return ThemeColors.purple
         case .delayed:
-            return .orange
+            return ThemeColors.brightYellow
         case .cancelled:
-            return .gray
+            return ThemeColors.darkGray
         case .unknown:
-            return ThemeColors.lunarRock
+            return ThemeColors.darkGray
+        }
+    }
+}
+
+/// Represents badges associated with a launch.
+enum Badge: String, Codable, Identifiable { // Conformed to Identifiable
+    case live
+    case exclusive
+    case firstLaunch
+    case notable
+    
+    var id: String { rawValue } // Provided unique identifier
+    
+    var displayText: String {
+        switch self {
+        case .live:
+            return "Live"
+        case .exclusive:
+            return "Exclusive"
+        case .firstLaunch:
+            return "First Launch"
+        case .notable:
+            return "Notable"
         }
     }
 }

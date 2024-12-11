@@ -2,30 +2,30 @@
 
 import Foundation
 
-/// Errors that can occur during API interactions.
+/// Errors specific to API interactions.
 enum APIError: LocalizedError {
     case invalidURL
     case invalidResponse
+    case decodingError(Error)
     case rateLimited
     case serverError(code: Int)
     case networkError(Error)
-    case decodingError(Error)
     case unknownError
-
+    
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid URL."
+            return "The API URL is invalid."
         case .invalidResponse:
-            return "Invalid response from server."
-        case .rateLimited:
-            return "Rate limit exceeded."
-        case .serverError(let code):
-            return "Server error with code: \(code)."
-        case .networkError(let error):
-            return error.localizedDescription
+            return "Received an invalid response from the server."
         case .decodingError(let error):
-            return "Decoding error: \(error.localizedDescription)"
+            return "Failed to decode the response: \(error.localizedDescription)"
+        case .rateLimited:
+            return "Rate limit exceeded. Please try again later."
+        case .serverError(let code):
+            return "Server returned an error with status code \(code)."
+        case .networkError(let error):
+            return "Network error occurred: \(error.localizedDescription)"
         case .unknownError:
             return "An unknown error occurred."
         }

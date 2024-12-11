@@ -1,49 +1,71 @@
+// Views/Common/TweetButtonView.swift
+
 import SwiftUI
-import SafariServices
-import WebKit
 
-/// A UIViewRepresentable that displays a Twitter share button using WKWebView.
-struct TweetButtonView: UIViewRepresentable {
-    let url: URL
+struct TweetButtonView: View {
     let text: String
-    let showCount: Bool
-
-    func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.isOpaque = false
-        webView.backgroundColor = UIColor.clear
-
-        let count = showCount ? "true" : "false"
-        let htmlString = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta name="twitter:widgets:csp" content="on">
-        <style>
-            body {
-                margin:0;
-                padding:0;
-                background:transparent;
-                transform: scale(5);
-                transform-origin: top left;
+    let url: URL?
+    let hashtags: String?
+    let via: String?
+    
+    var body: some View {
+        Button(action: {
+            shareOnTwitter()
+        }) {
+            HStack {
+                Image(systemName: "bird.fill")
+                    .resizable()
+                    .frame(width: 20, height: 16)
+                    .foregroundColor(.white)
+                
+                Text("Tweet")
+                    .font(.headline)
+                    .foregroundColor(.white)
             }
-        </style>
-        </head>
-        <body>
-        <a href="https://twitter.com/share" class="twitter-share-button"
-           data-text="\(text)"
-           data-url="\(url.absoluteString)"
-           data-show-count="\(count)">Share Launch</a>
-        <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-        </body>
-        </html>
-        """
-
-        webView.loadHTMLString(htmlString, baseURL: nil)
-        return webView
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(Color.blue)
+            .cornerRadius(8)
+        }
     }
+    
+    private func shareOnTwitter() {
+        var tweetText = text
+        if let url = url {
+            tweetText += " \(url.absoluteString)"
+        }
+        
+        // Encode the tweet text to ensure it's URL-safe
+        guard let tweetEncoded = tweetText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return
+        }
+        
+        // Construct the Twitter intent URL
+        var twitterURLString = "https://twitter.com/intent/tweet?text=\(tweetEncoded)"
+        
+        if let hashtags = hashtags {
+            twitterURLString += "&hashtags=\(hashtags)"
+        }
+        
+        if let via = via {
+            twitterURLString += "&via=\(via)"
+        }
+        
+        if let twitterURL = URL(string: twitterURLString) {
+            UIApplication.shared.open(twitterURL)
+        }
+    }
+}
 
-    func updateUIView(_ uiView: WKWebView, context: Context) {
-        // No dynamic updates needed for this view
+struct TweetButtonView_Previews: PreviewProvider {
+    static var previews: some View {
+        TweetButtonView(
+            text: "Check out this amazing rocket launch!",
+            url: URL(string: "https://example.com/launch"),
+            hashtags: "RocketLaunch,Space",
+            via: "YourTwitterHandle"
+        )
+        .padding()
+        .previewLayout(.sizeThatFits)
     }
 }

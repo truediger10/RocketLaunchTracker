@@ -58,4 +58,3 @@ struct FilterView: View {
         dismiss()
     }
 }
-

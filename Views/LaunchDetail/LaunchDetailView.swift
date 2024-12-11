@@ -1,6 +1,7 @@
 // Views/LaunchDetail/LaunchDetailView.swift
 
 import SwiftUI
+import Foundation
 
 /// A SwiftUI view that displays detailed information about a rocket launch.
 struct LaunchDetailView: View {
@@ -294,5 +295,27 @@ struct LaunchDetailView: View {
             return false
         }
         return true
+    }
+}
+
+// Preview for SwiftUI Canvas
+struct LaunchDetailView_Previews: PreviewProvider {
+    static var previews: some View {
+        LaunchDetailView(launch: Launch(
+            id: "1",
+            name: "Test Launch",
+            net: Date(),
+            status: .upcoming, // Using enum case directly
+            rocket: "Falcon 9",
+            provider: "SpaceX",
+            location: "Cape Canaveral",
+            imageURL: "https://example.com/image.jpg",
+            shortDescription: "Short description",
+            detailedDescription: "Detailed mission overview.",
+            orbit: "LEO",
+            wikiURL: "https://en.wikipedia.org/wiki/Falcon_9",
+            twitterURL: "https://twitter.com/SpaceX",
+            badges: [.live, .exclusive] // Explicitly specify the enum type
+        ))
     }
 }

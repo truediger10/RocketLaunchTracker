@@ -1,37 +1,32 @@
 // Views/Common/LaunchStatusTag.swift
 
 import SwiftUI
+import Foundation
 
+/// A SwiftUI view that displays a tag representing the launch status.
 struct LaunchStatusTag: View {
     let status: LaunchStatus
-    
+
     var body: some View {
-        HStack(spacing: Constants.spacing) {
-            Circle()
-                .fill(status.color) // Uses 'color' from LaunchStatus
-                .frame(width: Constants.circleSize, height: Constants.circleSize)
-                .accessibilityHidden(true)
-            
-            Text(status.displayText)
-                .font(.caption)
-                .foregroundColor(ThemeColors.almostWhite)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .padding(.horizontal, Constants.horizontalPadding)
-        .padding(.vertical, Constants.verticalPadding)
-        .background(ThemeColors.darkGray.opacity(0.8))
-        .cornerRadius(Constants.cornerRadius)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Launch Status: \(status.displayText)")
+        Text(status.displayText)
+            .font(.caption2)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(statusColor)
+            .foregroundColor(.white)
+            .cornerRadius(8)
     }
     
-    // MARK: - Constants
-    private enum Constants {
-        static let circleSize: CGFloat = 10
-        static let horizontalPadding: CGFloat = 12
-        static let verticalPadding: CGFloat = 6
-        static let cornerRadius: CGFloat = 12
-        static let spacing: CGFloat = 8
+    /// Determines the color based on the launch status.
+    private var statusColor: Color {
+        status.color // Utilize the color property from LaunchStatus
+    }
+}
+
+// Preview for SwiftUI Canvas
+struct LaunchStatusTag_Previews: PreviewProvider {
+    static var previews: some View {
+        LaunchStatusTag(status: LaunchStatus.upcoming)
+            .padding()
     }
 }

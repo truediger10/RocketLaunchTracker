@@ -55,6 +55,7 @@ actor OpenAIService: @unchecked Sendable {
     }
     
     // MARK: - Public Methods
+    
     /// Enriches a launch with additional descriptive information using OpenAI.
     /// - Parameter launch: The launch to enrich.
     /// - Returns: An enriched `LaunchEnrichment` object.
@@ -85,6 +86,7 @@ actor OpenAIService: @unchecked Sendable {
     }
     
     // MARK: - Private Methods
+    
     /// Creates the prompt messages for the OpenAI API based on launch details.
     /// - Parameter launch: The launch to create prompts for.
     /// - Returns: An array of `Message` objects.

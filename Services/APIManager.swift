@@ -2,14 +2,22 @@
 
 import Foundation
 
-/// Manages API interactions, including fetching launches and handling enrichments.
-actor APIManager {
+actor APIManager: Sendable {
+    // MARK: - Shared Instance
     static let shared = APIManager()
     
     // MARK: - Constants
-    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/"
+    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=10&offset=0"
     private let maxRetries = 3
     private let initialRetryDelay: UInt64 = 500_000_000 // 0.5 seconds
+    private let timeoutInterval: TimeInterval = 15
+    
+    // MARK: - Update Schedule Constants
+    private enum UpdateSchedule {
+        static let weekBefore: TimeInterval = 7 * 24 * 60 * 60  // 1 week
+        static let dayBefore: TimeInterval = 24 * 60 * 60       // 1 day
+        static let dayOf: TimeInterval = 60 * 60                // Every hour on launch day
+    }
     
     // MARK: - Dependencies
     private let cache: CacheManager
@@ -18,9 +26,8 @@ actor APIManager {
     
     // MARK: - State
     private var nextURLString: String?
-    private var isEnrichingBatch = false
+    private var scheduledUpdateTasks: [String: Task<Void, Never>] = [:]
     
-    // MARK: - Initialization
     private init(
         cache: CacheManager = .shared,
         openAIService: OpenAIService = .shared,
@@ -29,30 +36,19 @@ actor APIManager {
         self.cache = cache
         self.openAIService = openAIService
         self.urlSession = urlSession
-        
         print("APIManager initialized with baseURL: \(baseURL)")
     }
     
     // MARK: - Public Methods
-    
-    /// Fetches upcoming launches, utilizing cache if available.
-    /// - Returns: An array of `Launch` objects.
     func fetchLaunches() async throws -> [Launch] {
         print("fetchLaunches() called")
-        
-        // Implement caching logic if needed
-        // For simplicity, always fetch from API
         let launches = try await fetchFromSpaceDevs(urlString: baseURL)
+        await cacheLaunches(launches)
+        scheduleUpdatesForAllLaunches(launches)
         print("Fetched \(launches.count) launches from API")
-        
-        // Cache launches if needed
-        // await cache.cacheLaunches(launches)
-        
         return launches
     }
     
-    /// Fetches additional launches using the next URL if available.
-    /// - Returns: An optional array of `Launch` objects.
     func fetchMoreLaunches() async throws -> [Launch]? {
         guard let nextURL = nextURLString else {
             print("No more launches to fetch.")
@@ -61,19 +57,13 @@ actor APIManager {
         
         print("fetchMoreLaunches() called with URL: \(nextURL)")
         let launches = try await fetchFromSpaceDevs(urlString: nextURL)
+        await cacheLaunches(launches)
+        scheduleUpdatesForAllLaunches(launches)
         print("Fetched \(launches.count) more launches from API")
-        
-        // Cache additional launches if needed
-        // await cache.cacheLaunches(launches)
-        
         return launches
     }
     
     // MARK: - Private Methods
-    
-    /// Fetches launches from the SpaceDevs API with retry logic.
-    /// - Parameter urlString: The URL string to fetch data from.
-    /// - Returns: An array of `Launch` objects.
     private func fetchFromSpaceDevs(urlString: String) async throws -> [Launch] {
         print("Fetching from SpaceDevs API with URL: \(urlString)")
         guard let url = URL(string: urlString) else {
@@ -83,18 +73,20 @@ actor APIManager {
         
         var attempt = 1
         var delay = initialRetryDelay
-        
-        // Configure JSONDecoder with appropriate date decoding strategy
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
         while attempt <= maxRetries {
             do {
-                let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+                var request = URLRequest(url: url)
+                request.cachePolicy = .reloadIgnoringLocalCacheData
+                request.timeoutInterval = timeoutInterval
+                request.setValue("application/json", forHTTPHeaderField: "Accept")
+                request.setValue("gzip", forHTTPHeaderField: "Accept-Encoding")
+                
                 let (data, response) = try await urlSession.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("Invalid response received from URL: \(urlString)")
                     throw APIError.invalidResponse
                 }
                 
@@ -104,49 +96,155 @@ actor APIManager {
                         let decodedResponse = try decoder.decode(SpaceDevsResponse.self, from: data)
                         self.nextURLString = decodedResponse.next
                         print("Received successful response with status code: \(httpResponse.statusCode)")
-                        return decodedResponse.results
+                        return try await enrichLaunchesConcurrently(decodedResponse.results)
                     } catch {
-                        // Print raw JSON for debugging
-                        if let jsonString = String(data: data, encoding: .utf8) {
-                            print("Decoding failed. Raw JSON:")
-                            print(jsonString)
-                        }
                         print("Decoding error: \(error)")
                         throw APIError.decodingError(error)
                     }
                 case 429:
-                    print("Rate limited by API with status code: 429")
                     throw APIError.rateLimited
+                case 500...599:
+                    throw APIError.serverError(code: httpResponse.statusCode)
                 default:
-                    print("Server error with status code: \(httpResponse.statusCode)")
                     throw APIError.serverError(code: httpResponse.statusCode)
                 }
-            } catch APIError.rateLimited {
-                if attempt == maxRetries {
-                    print("Max retries reached due to rate limiting.")
-                    throw APIError.rateLimited
+            } catch let urlError as URLError where urlError.code == .cancelled {
+                print("Request was cancelled")
+                throw APIError.networkError(urlError)
+            } catch let error as APIError {
+                switch error {
+                case .rateLimited where attempt < maxRetries:
+                    print("Rate limited. Retrying after \(Double(delay) / 1_000_000_000) seconds...")
+                    try await Task.sleep(nanoseconds: delay)
+                    delay *= 2
+                    attempt += 1
+                    continue
+                case .decodingError, .invalidResponse:
+                    throw error
+                default:
+                    if attempt >= maxRetries {
+                        throw error
+                    }
+                    print("Retrying after error: \(error)")
+                    try await Task.sleep(nanoseconds: delay)
+                    delay *= 2
+                    attempt += 1
                 }
-                print("Rate limited. Retrying after \(Double(delay) / 1_000_000_000) seconds...")
-                try await Task.sleep(nanoseconds: delay)
-                delay *= 2
-                attempt += 1
-            } catch APIError.decodingError(let decodingError) {
-                print("Decoding error on attempt \(attempt): \(decodingError)")
-                // Decide whether to retry on decoding errors
-                // Here, we'll not retry and throw the error
-                throw APIError.decodingError(decodingError)
-            } catch {
-                if attempt == maxRetries {
-                    print("Max retries reached. Throwing error.")
-                    throw APIError.networkError(error)
-                }
-                print("Attempt \(attempt) failed with error: \(error). Retrying after \(Double(delay) / 1_000_000_000) seconds...")
-                try await Task.sleep(nanoseconds: delay)
-                delay *= 2
-                attempt += 1
             }
         }
         
         throw APIError.unknownError
     }
+    
+    private func enrichLaunchesConcurrently(_ spaceDevsLaunches: [SpaceDevsLaunch]) async throws -> [Launch] {
+        try await withThrowingTaskGroup(of: Launch?.self) { group in
+            for spaceDevsLaunch in spaceDevsLaunches {
+                group.addTask {
+                    var launch = spaceDevsLaunch.toAppLaunch(withEnrichment: nil)
+                    
+                    if let cachedEnrichment = await self.cache.getCachedEnrichment(for: launch.id) {
+                        launch.shortDescription = cachedEnrichment.shortDescription
+                        launch.detailedDescription = cachedEnrichment.detailedDescription
+                        launch.status = cachedEnrichment.status ?? launch.status
+                        return launch
+                    }
+                    
+                    do {
+                        let enrichedData = try await self.openAIService.enrichLaunch(launch)
+                        await self.cache.cacheEnrichment(enrichedData, for: launch.id)
+                        
+                        launch.shortDescription = enrichedData.shortDescription
+                        launch.detailedDescription = enrichedData.detailedDescription
+                        launch.status = enrichedData.status ?? launch.status
+                        
+                        return launch
+                    } catch {
+                        print("Failed to enrich launch ID: \(launch.id) with error: \(error)")
+                        return launch
+                    }
+                }
+            }
+            
+            var enrichedLaunches: [Launch] = []
+            for try await enrichedLaunch in group {
+                if let enrichedLaunch = enrichedLaunch {
+                    enrichedLaunches.append(enrichedLaunch)
+                }
+            }
+            return enrichedLaunches
+        }
+    }
+    
+    // MARK: - Update Scheduling Methods
+    private func scheduleUpdatesForLaunch(_ launch: Launch) {
+        guard let launchDate = launch.net else { return }
+        
+        // Cancel existing update tasks for this launch
+        scheduledUpdateTasks[launch.id]?.cancel()
+        
+        let now = Date()
+        let weekBeforeDate = launchDate.addingTimeInterval(-UpdateSchedule.weekBefore)
+        let dayBeforeDate = launchDate.addingTimeInterval(-UpdateSchedule.dayBefore)
+        
+        if weekBeforeDate > now {
+            scheduleUpdate(for: launch, at: weekBeforeDate)
+        }
+        
+        if dayBeforeDate > now {
+            scheduleUpdate(for: launch, at: dayBeforeDate)
+        }
+        
+        if launchDate > now {
+            scheduleUpdate(for: launch, at: launchDate)
+        }
+    }
+    
+    private func scheduleUpdate(for launch: Launch, at date: Date) {
+        let task = Task {
+            let interval = date.timeIntervalSince(Date())
+            if interval > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                if !Task.isCancelled {
+                    try? await checkForUpdates(forLaunch: launch)
+                }
+            }
+        }
+        scheduledUpdateTasks[launch.id] = task
+    }
+    
+    private func scheduleUpdatesForAllLaunches(_ launches: [Launch]) {
+        for launch in launches {
+            scheduleUpdatesForLaunch(launch)
+        }
+    }
+    
+    private func checkForUpdates(forLaunch launch: Launch) async throws {
+        let updatedLaunchURL = "\(baseURL)&id=\(launch.id)"
+        let updatedLaunches = try await fetchFromSpaceDevs(urlString: updatedLaunchURL)
+        
+        if let updatedLaunch = updatedLaunches.first,
+           hasLaunchChanged(old: launch, new: updatedLaunch) {
+            await cache.cacheLaunches([updatedLaunch])
+            NotificationCenter.default.post(
+                name: .launchScheduleChanged,
+                object: nil,
+                userInfo: ["launchId": launch.id]
+            )
+        }
+    }
+    
+    private func hasLaunchChanged(old: Launch, new: Launch) -> Bool {
+        return old.net != new.net ||
+               old.status != new.status ||
+               old.location != new.location
+    }
+    
+    private func cacheLaunches(_ launches: [Launch]) async {
+        await cache.cacheLaunches(launches)
+    }
+}
+
+// MARK: - Notification Names
+extension Notification.Name {
+    static let launchScheduleChanged = Notification.Name("launchScheduleChanged")
 }

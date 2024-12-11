@@ -2,14 +2,8 @@
 
 import Foundation
 
-/// Represents additional enriched data for a launch.
-struct LaunchEnrichment: Codable {
-    let shortDescription: String?
-    let detailedDescription: String?
-    let status: LaunchStatus? // Added 'status' property
-}
-
-class CacheManager {
+/// Manages caching of launch enrichments to optimize performance and reduce redundant API calls.
+actor CacheManager: Sendable {
     static let shared = CacheManager()
     
     private let fileManager: FileManager
@@ -18,6 +12,7 @@ class CacheManager {
     private let cacheDirectory: URL
     
     private var memoryEnrichments: [String: LaunchEnrichment] = [:]
+    private var memoryLaunches: [Launch] = []
     
     private init() {
         self.fileManager = .default
@@ -30,6 +25,42 @@ class CacheManager {
         try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         
         print("CacheManager initialized at directory: \(cacheDirectory.path)")
+    }
+    
+    // MARK: - Launch Caching
+    
+    /// Caches an array of launches both in memory and on disk
+    /// - Parameter launches: Array of Launch objects to cache
+    func cacheLaunches(_ launches: [Launch]) async {
+        let fileURL = cacheDirectory.appendingPathComponent("launches.cache")
+        
+        do {
+            let data = try encoder.encode(launches)
+            try data.write(to: fileURL, options: .atomicWrite)
+            memoryLaunches = launches
+            print("Successfully cached \(launches.count) launches")
+        } catch {
+            print("Failed to cache launches with error: \(error)")
+        }
+    }
+    
+    /// Retrieves cached launches if available
+    /// - Returns: Array of cached Launch objects or nil if no cache exists
+    func getCachedLaunches() async -> [Launch]? {
+        if !memoryLaunches.isEmpty {
+            return memoryLaunches
+        }
+        
+        let fileURL = cacheDirectory.appendingPathComponent("launches.cache")
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let launches = try decoder.decode([Launch].self, from: data)
+            memoryLaunches = launches
+            return launches
+        } catch {
+            print("Failed to load cached launches with error: \(error)")
+            return nil
+        }
     }
     
     // MARK: - Enrichment Caching
@@ -48,7 +79,6 @@ class CacheManager {
         do {
             let data = try Data(contentsOf: fileURL)
             let cache = try decoder.decode(LaunchEnrichment.self, from: data)
-            // Add expiration logic if needed
             memoryEnrichments[id] = cache
             print("Loaded enrichment from disk cache for launch ID: \(id)")
             return cache
@@ -73,7 +103,18 @@ class CacheManager {
             print("Successfully cached enrichment to disk and memory for launch ID: \(id)")
         } catch {
             print("Failed to cache enrichment for launch ID \(id) with error: \(error)")
-            // Handle caching errors if necessary
         }
+    }
+    
+    /// Updates a specific launch in both memory and disk cache
+    /// - Parameter launch: The Launch object to update
+    func updateLaunch(_ launch: Launch) async {
+        if let index = memoryLaunches.firstIndex(where: { $0.id == launch.id }) {
+            memoryLaunches[index] = launch
+        }
+        
+        // Also update disk cache
+        let launches = memoryLaunches
+        await cacheLaunches(launches)
     }
 }
