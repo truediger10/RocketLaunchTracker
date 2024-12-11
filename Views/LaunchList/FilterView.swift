@@ -23,6 +23,7 @@ struct FilterView: View {
                 Text("Failed").tag(LaunchStatus.failed as LaunchStatus?)
                 Text("Delayed").tag(LaunchStatus.delayed as LaunchStatus?)
                 Text("Cancelled").tag(LaunchStatus.cancelled as LaunchStatus?)
+                Text("Unknown").tag(LaunchStatus.unknown as LaunchStatus?) // Added Unknown option
             }
             
             TextField("Provider", text: $selectedProvider)
@@ -57,3 +58,4 @@ struct FilterView: View {
         dismiss()
     }
 }
+

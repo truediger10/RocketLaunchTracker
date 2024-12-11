@@ -1,6 +1,16 @@
+// ViewModels/LaunchViewModel.swift
+
 import Foundation
 import Combine
 import SwiftUI
+
+/// Represents the current state of the view.
+enum ViewState {
+    case idle
+    case loading
+    case loaded
+    case error(String)
+}
 
 /// A view model that manages the state and business logic for the rocket launch list.
 @MainActor
@@ -9,9 +19,10 @@ class LaunchViewModel: ObservableObject {
     
     @Published private(set) var launches: [Launch] = []
     @Published private(set) var isLoading = false
-    @Published private(set) var error: String?
+    @Published var error: String? // Made mutable by removing 'private(set)'
     @Published var searchQuery: String = ""
     @Published var criteria: LaunchCriteria = LaunchCriteria()
+    @Published var viewState: ViewState = .idle // Tracks view state
     
     // MARK: - Private Properties
     private let apiManager: APIManager
@@ -22,7 +33,7 @@ class LaunchViewModel: ObservableObject {
         launches.filter { launch in
             let searchableFields = [
                 launch.name,
-                launch.rocketName,
+                launch.rocketName, // Accessible via computed property
                 launch.provider,
                 launch.location
             ]
@@ -39,10 +50,12 @@ class LaunchViewModel: ObservableObject {
     init(apiManager: APIManager = .shared) {
         self.apiManager = apiManager
         setupEnrichmentObserver()
+        setupBindings()
         print("LaunchViewModel initialized")
     }
     
     // MARK: - Private Methods
+    
     /// Sets up an observer for launch enrichment updates.
     private func setupEnrichmentObserver() {
         print("Setting up enrichment observer")
@@ -63,6 +76,16 @@ class LaunchViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
+    /// Sets up bindings for search query and criteria to update filtered launches.
+    private func setupBindings() {
+        Publishers.CombineLatest($searchQuery, $criteria)
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { [weak self] (query, criteria) in
+                self?.applyFilters(query: query, criteria: criteria)
+            }
+            .store(in: &cancellables)
+    }
+    
     /// Updates a specific launch with its enriched data.
     /// - Parameter launchId: The ID of the launch to update.
     private func updateLaunchWithEnrichment(_ launchId: String) async {
@@ -74,27 +97,34 @@ class LaunchViewModel: ObservableObject {
         }
         
         let existingLaunch = launches[index]
-        let updatedBadges = existingLaunch.badges ?? []
-        // If enrichment affects badges, adjust here. Otherwise, keep existing badges.
-        // For now, we'll keep existing badges.
-        
-        launches[index] = Launch(
+        let updatedLaunch = Launch(
             id: existingLaunch.id,
             name: existingLaunch.name,
-            launchDate: existingLaunch.launchDate,
-            status: existingLaunch.status,
-            rocketName: existingLaunch.rocketName,
+            net: enrichment.status != nil ? Date() : existingLaunch.net, // Example update logic
+            status: enrichment.status ?? existingLaunch.status,
+            rocket: existingLaunch.rocket,
             provider: existingLaunch.provider,
             location: existingLaunch.location,
-            imageURL: existingLaunch.imageURL,
-            shortDescription: enrichment.shortDescription,
-            detailedDescription: enrichment.detailedDescription,
+            imageURL: enrichment.shortDescription ?? existingLaunch.imageURL,
+            shortDescription: enrichment.shortDescription ?? existingLaunch.shortDescription,
+            detailedDescription: enrichment.detailedDescription ?? existingLaunch.detailedDescription,
             orbit: existingLaunch.orbit,
             wikiURL: existingLaunch.wikiURL,
             twitterURL: existingLaunch.twitterURL,
-            badges: updatedBadges // Assign badges as existing or updated
+            badges: existingLaunch.badges // Assign badges as existing or updated if needed
         )
+        launches[index] = updatedLaunch
         print("Launch updated with enriched data for ID: \(launchId)")
+    }
+    
+    /// Applies filters based on search query and criteria.
+    /// - Parameters:
+    ///   - query: The search query.
+    ///   - criteria: The filtering criteria.
+    private func applyFilters(query: String, criteria: LaunchCriteria) {
+        // Currently handled by the 'filteredLaunches' computed property
+        // Additional logic can be added here if needed
+        objectWillChange.send()
     }
     
     // MARK: - Public Methods
@@ -106,6 +136,7 @@ class LaunchViewModel: ObservableObject {
             return
         }
         isLoading = true
+        viewState = .loading
         error = nil
         print("Starting fetchLaunches()")
         
@@ -114,14 +145,22 @@ class LaunchViewModel: ObservableObject {
             if fetched.isEmpty {
                 print("No launches found")
                 error = "No launches found"
+                viewState = .error(error!)
             } else {
                 print("Fetched \(fetched.count) launches")
                 launches = fetched
+                viewState = .loaded
             }
-        } catch let fetchError {
+        } catch let fetchError as APIError {
             print("Error fetching launches: \(fetchError)")
-            error = "Failed to load launches. Please try again. Details: \(fetchError.localizedDescription)"
+            error = fetchError.localizedDescription
             launches = []
+            viewState = .error(error!)
+        } catch {
+            print("Unexpected error fetching launches: \(error)")
+            error = "An unexpected error occurred."
+            launches = []
+            viewState = .error(error!)
         }
         
         isLoading = false
@@ -135,6 +174,7 @@ class LaunchViewModel: ObservableObject {
             return
         }
         isLoading = true
+        viewState = .loading
         error = nil
         print("Starting fetchMoreLaunches()")
         
@@ -142,12 +182,19 @@ class LaunchViewModel: ObservableObject {
             if let more = try await apiManager.fetchMoreLaunches() {
                 print("Fetched \(more.count) more launches")
                 launches.append(contentsOf: more)
+                viewState = .loaded
             } else {
                 print("No additional launches to fetch")
+                viewState = .loaded
             }
-        } catch let fetchError {
+        } catch let fetchError as APIError {
             print("Error fetching more launches: \(fetchError)")
-            error = "Failed to load more launches. Please try again. Details: \(fetchError.localizedDescription)"
+            error = fetchError.localizedDescription
+            viewState = .error(error!)
+        } catch {
+            print("Unexpected error fetching more launches: \(error)")
+            error = "An unexpected error occurred."
+            viewState = .error(error!)
         }
         
         isLoading = false

@@ -1,60 +1,52 @@
+// Models/LaunchCriteria.swift
+
 import Foundation
 
-/**
- A set of criteria used to filter launches based on date ranges, status, and location.
- 
- `LaunchCriteria` is used to determine if a given `Launch` meets specified conditions.
- This can be utilized in search or filtering features, allowing users to narrow down
- launches of interest by customizing these criteria.
- 
- - Properties:
-   - startDate: Optional earliest launch date. Launches before this date are excluded.
-   - endDate: Optional latest launch date. Launches after this date are excluded.
-   - status: Optional required status (e.g., Upcoming, Successful). Launches not matching this status are excluded.
-   - location: Optional substring to match against the launch location. Launches whose location does not contain this string are excluded.
- */
 struct LaunchCriteria {
-    /// The earliest acceptable launch date. Launches before this date will not match.
-    var startDate: Date?
-    /// The latest acceptable launch date. Launches after this date will not match.
-    var endDate: Date?
-    /// The required launch status. If set, launches must match this status to be included.
     var status: LaunchStatus?
-    /// A substring to search for in the launch location. Launches whose location does not contain this substring are excluded.
+    var provider: String?
+    var rocketName: String?
+    var launchDateRange: ClosedRange<Date>?
     var location: String?
     
-    /**
-     Determines if a given `Launch` object matches all criteria specified in this structure.
-     
-     The `matches(_:)` method:
-     - Checks if the launch date falls within the optional start and end dates.
-     - Verifies that the launch status matches the required status if specified.
-     - Ensures that the launch location contains the specified substring if provided.
-     
-     - Parameter launch: The `Launch` object to be tested against the criteria.
-     - Returns: `true` if the launch meets all criteria; otherwise, `false`.
-     */
+    /// Determines if a launch matches the criteria.
+    /// - Parameter launch: The launch to evaluate.
+    /// - Returns: `true` if the launch matches all criteria, `false` otherwise.
     func matches(_ launch: Launch) -> Bool {
-        // Check the date range if specified.
-        if let start = startDate, launch.launchDate < start {
-            return false
-        }
-        if let end = endDate, launch.launchDate > end {
+        // Check status
+        if let status = status, launch.status != status {
             return false
         }
         
-        // Check if the launch status matches the required status (if specified).
-        if let requiredStatus = status, launch.status != requiredStatus {
+        // Check provider
+        if let provider = provider, !provider.isEmpty,
+           !launch.provider.localizedCaseInsensitiveContains(provider) {
             return false
         }
         
-        // Check if the launch location contains the required substring (case-insensitive).
-        if let requiredLocation = location,
-           !launch.location.localizedCaseInsensitiveContains(requiredLocation) {
+        // Check rocket name
+        if let rocketName = rocketName, !rocketName.isEmpty,
+           !launch.rocketName.localizedCaseInsensitiveContains(rocketName) {
             return false
         }
         
-        // If all checks pass, the launch matches the criteria.
+        // Check launch date range
+        if let dateRange = launchDateRange {
+            if let launchDate = launch.launchDate {
+                if !dateRange.contains(launchDate) {
+                    return false
+                }
+            } else {
+                return false
+            }
+        }
+        
+        // Check location
+        if let location = location, !location.isEmpty,
+           !launch.location.localizedCaseInsensitiveContains(location) {
+            return false
+        }
+        
         return true
     }
 }

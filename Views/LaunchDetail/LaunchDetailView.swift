@@ -1,3 +1,5 @@
+// Views/LaunchDetail/LaunchDetailView.swift
+
 import SwiftUI
 
 /// A SwiftUI view that displays detailed information about a rocket launch.
@@ -160,7 +162,7 @@ struct LaunchDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             DetailItem(label: "Launch Date", value: launch.formattedDate, icon: "calendar.day.timeline.left")
             DetailItem(label: "Location", value: launch.location, icon: "mappin.and.ellipse")
-            DetailItem(label: "Rocket", value: launch.rocketName, icon: "paperplane.fill")
+            DetailItem(label: "Rocket", value: launch.rocketName, icon: "paperplane.fill") // Accessing rocketName
             if let orbit = launch.orbit {
                 DetailItem(label: "Orbit", value: orbit, icon: "globe.americas.fill")
             }

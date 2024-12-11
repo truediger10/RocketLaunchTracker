@@ -2,19 +2,16 @@ import Foundation
 import SwiftUI
 
 // MARK: - SpaceDevs API Response
+// Models/APIModels.swift
 
-/**
- Represents the top-level response from the SpaceDevs API containing multiple launches.
+import Foundation
 
- - Parameters:
-    - count: The total number of launches available.
-    - next: A URL string for the next page of results, if any.
-    - results: An array of `SpaceDevsLaunch` objects representing individual launches.
- */
+/// Represents the response structure from SpaceDevs API.
 struct SpaceDevsResponse: Codable {
     let count: Int
     let next: String?
-    let results: [SpaceDevsLaunch]
+    let previous: String?
+    let results: [Launch]
 }
 
 // MARK: - Launch and Related Models
@@ -95,10 +92,7 @@ struct SpaceDevsLaunch: Codable {
  Represents additional enrichment data for a launch, such as enhanced short and detailed descriptions.
  This data might be fetched from a cache or enrichment service and merged into the final `Launch` model.
  */
-struct LaunchEnrichment: Codable {
-    let shortDescription: String
-    let detailedDescription: String
-}
+
 
 // MARK: - Launch Extension
 
@@ -165,9 +159,9 @@ extension SpaceDevsLaunch {
         return Launch(
             id: id,
             name: name,
-            launchDate: launchDate,
+            net: launchDate,
             status: mappedStatus,
-            rocketName: rocket.configuration.full_name,
+            rocket: rocket.configuration.full_name,
             provider: launch_service_provider.name,
             location: pad.location.name,
             imageURL: image?.image_url,

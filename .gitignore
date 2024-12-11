@@ -23,4 +23,4 @@ xcuserdata/
 *.lock
 
 # Exclude specific scheme files containing sensitive information
-RocketLaunchTracker.xcodeproj/xcshareddata/xcschemes/RocketLaunchTracker.xcscheme
+RocketLaunchTracker.xcodeproj/xcshareddata/xcschemes/RocketLaunchTracker.xcscheme.DS_Store

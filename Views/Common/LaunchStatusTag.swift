@@ -1,3 +1,5 @@
+// Views/Common/LaunchStatusTag.swift
+
 import SwiftUI
 
 struct LaunchStatusTag: View {
@@ -6,7 +8,7 @@ struct LaunchStatusTag: View {
     var body: some View {
         HStack(spacing: Constants.spacing) {
             Circle()
-                .fill(statusColor)
+                .fill(status.color) // Uses 'color' from LaunchStatus
                 .frame(width: Constants.circleSize, height: Constants.circleSize)
                 .accessibilityHidden(true)
             
@@ -22,26 +24,6 @@ struct LaunchStatusTag: View {
         .cornerRadius(Constants.cornerRadius)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Launch Status: \(status.displayText)")
-    }
-    
-    /// Determines the color based on launch status
-    private var statusColor: Color {
-        switch status {
-        case .upcoming:
-            return ThemeColors.brightYellow
-        case .launching:
-            return .blue
-        case .successful:
-            return .green
-        case .failed:
-            return .red
-        case .delayed:
-            return .orange
-        case .cancelled:
-            return .gray
-        case .unknown:
-            return ThemeColors.lunarRock
-        }
     }
     
     // MARK: - Constants

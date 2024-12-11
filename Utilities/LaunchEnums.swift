@@ -1,3 +1,6 @@
+// Utilities/LaunchEnums.swift
+
+import Foundation
 import SwiftUI
 
 /// Represents different types of badges for launches.
@@ -29,24 +32,35 @@ enum Badge: String, Codable, Identifiable {
     }
 }
 
-/// Represents the status of a rocket launch.
-enum LaunchStatus: String, Codable {
-    case upcoming = "Go for Launch"
-    case launching = "In Flight"
-    case successful = "Launch Successful"
-    case failed = "Launch Failure"
-    case delayed = "Launch Delayed"
-    case cancelled = "Launch Cancelled"
+/// Represents the status of a launch.
+enum LaunchStatus: String, Codable, Identifiable {
+    case upcoming
+    case launching
+    case successful
+    case failed
+    case delayed
+    case cancelled
+    case unknown // Added case
 
-    /// Provides a simplified, user-facing description of the launch status.
+    var id: String { self.rawValue }
+
+    /// Provides the display text for the launch status.
     var displayText: String {
         switch self {
-        case .upcoming: return "Upcoming"
-        case .launching: return "Launching"
-        case .successful: return "Successful"
-        case .failed: return "Failed"
-        case .delayed: return "Delayed"
-        case .cancelled: return "Cancelled"
+        case .upcoming:
+            return "Upcoming"
+        case .launching:
+            return "Launching"
+        case .successful:
+            return "Successful"
+        case .failed:
+            return "Failed"
+        case .delayed:
+            return "Delayed"
+        case .cancelled:
+            return "Cancelled"
+        case .unknown:
+            return "Unknown"
         }
     }
 
@@ -65,6 +79,8 @@ enum LaunchStatus: String, Codable {
             return .orange
         case .cancelled:
             return .gray
+        case .unknown:
+            return ThemeColors.lunarRock
         }
     }
 }

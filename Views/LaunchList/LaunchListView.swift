@@ -1,8 +1,10 @@
+// Views/LaunchList/LaunchListView.swift
+
 import SwiftUI
 
 /// A list view displaying upcoming launches. Allows for searching, filtering, and viewing details.
 struct LaunchListView: View {
-    @ObservedObject var viewModel: LaunchViewModel
+    @StateObject var viewModel: LaunchViewModel // Changed to @StateObject
     let isNotableTab: Bool
     
     @State private var selectedLaunch: Launch?
