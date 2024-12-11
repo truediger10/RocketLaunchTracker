@@ -1,52 +1,57 @@
+// Config/Config.swift
+
 import Foundation
 
-/**
- A singleton configuration object that provides access to API keys and other sensitive data.
- 
- `Config` retrieves values from environment variables during debug builds for convenience,
- and defaults to empty values for release builds, encouraging a more secure retrieval method
- (e.g., secure storage in Keychain or a managed secrets tool).
- 
- - Properties:
-    - openAIAPIKey: The API key for interacting with the OpenAI API.
-    - spaceDevsAPIKey: The API key for interacting with the SpaceDevs API.
- 
- **Note:**
- In production or release builds, API keys should not be hard-coded or stored in environment variables
- directly. Instead, consider using secure storage solutions or managed secrets in your CI/CD pipeline.
- */
 struct Config {
-    /// The shared, singleton instance of `Config`.
+    enum ConfigError: LocalizedError {
+        case missingAPIKey(String)
+        
+        var errorDescription: String? {
+            switch self {
+            case .missingAPIKey(let key):
+                return "Missing required API key: \(key)"
+            }
+        }
+    }
+    
     static let shared = Config()
     
-    /// The API key for the OpenAI API.
-    let openAIAPIKey: String
-    
-    /// The API key for the SpaceDevs API.
+    var openAIAPIKey: String
     let spaceDevsAPIKey: String
+    let cacheExpirationInterval: TimeInterval = 3600 // 1 hour
+    let maxRetries: Int = 3
     
-    /**
-     Initializes the configuration.
-     
-     In debug builds, keys are fetched from environment variables, allowing simple local testing.
-     In release builds, defaults to empty strings, encouraging secure retrieval methods rather than
-     relying on environment variables.
-     */
     private init() {
-        #if DEBUG
-        // Load keys from environment variables for local/testing scenarios.
-        openAIAPIKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? ""
-        spaceDevsAPIKey = ProcessInfo.processInfo.environment["SPACEDEVS_API_KEY"] ?? ""
-        
-        // Warn if keys are not found when running locally in debug mode.
-        if openAIAPIKey.isEmpty || spaceDevsAPIKey.isEmpty {
-            print("⚠️ Warning: API keys not found in environment variables.")
+        func getEnvironmentVariable(_ key: String) throws -> String {
+            // Use debug keys in development
+            #if DEBUG
+            let debugKeys = [
+                "OPENAI_API_KEY": "sk-debug",
+                "SPACEDEVS_API_KEY": "debug-key"
+            ]
+            if let debugValue = debugKeys[key] {
+                return debugValue
+            }
+            #endif
+            
+            guard let value = ProcessInfo.processInfo.environment[key],
+                  !value.isEmpty else {
+                throw ConfigError.missingAPIKey(key)
+            }
+            return value
         }
-        #else
-        // In production builds, do not rely on environment variables.
-        // Retrieve keys from secure storage or another secure mechanism.
-        openAIAPIKey = ""
-        spaceDevsAPIKey = ""
-        #endif
+        
+        do {
+            self.openAIAPIKey = try getEnvironmentVariable("OPENAI_API_KEY")
+            self.spaceDevsAPIKey = try getEnvironmentVariable("SPACEDEVS_API_KEY")
+        } catch {
+            #if DEBUG
+            print("⚠️ Using debug API keys: \(error.localizedDescription)")
+            self.openAIAPIKey = "sk-debug"
+            self.spaceDevsAPIKey = "debug-key"
+            #else
+            fatalError("\(error.localizedDescription)")
+            #endif
+        }
     }
 }

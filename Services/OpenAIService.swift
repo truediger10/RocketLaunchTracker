@@ -1,3 +1,5 @@
+// Services/OpenAIService.swift
+
 import Foundation
 
 /// Errors specific to OpenAI service interactions.
@@ -7,8 +9,10 @@ enum OpenAIServiceError: LocalizedError {
     case processingError(detail: String)
     case rateLimited
     case serverError(code: Int, message: String)
+    case timeout
+    case unexpectedFormat
     case unknownError
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidURL:
@@ -21,234 +25,284 @@ enum OpenAIServiceError: LocalizedError {
             return "Rate limit exceeded. Please try again later."
         case .serverError(let code, let message):
             return "Server error (\(code)): \(message)."
+        case .timeout:
+            return "The request timed out."
+        case .unexpectedFormat:
+            return "The response format was unexpected."
         case .unknownError:
             return "An unknown error occurred."
         }
     }
 }
 
-/// Service responsible for enriching launch data using OpenAI.
-actor OpenAIService: @unchecked Sendable {
+/**
+ Service responsible for enriching launch data using OpenAI.
+ */
+actor OpenAIService {
     // MARK: - Constants
     static let shared = OpenAIService()
-    
+
     private enum Constants {
         static let endpoint = "https://api.openai.com/v1/chat/completions"
         static let model = "gpt-4"
-        static let maxRetries = 3
-        static let initialDelay: UInt64 = 500_000_000 // 0.5 seconds
-        static let maxDelay: UInt64 = 8_000_000_000 // 8 seconds
+        static let enrichmentTimeout: TimeInterval = 10 // 10 seconds
     }
-    
+
     // MARK: - Properties
     private let urlSession: URLSession
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
-    private var enrichmentCache: [String: LaunchEnrichment] = [:]
-    
+    private let cache: CacheManager
+
     // MARK: - Initialization
-    private init(urlSession: URLSession = .shared) {
+    private init(urlSession: URLSession = .shared, cache: CacheManager = .shared) {
         self.urlSession = urlSession
-        print("OpenAIService initialized")
+        self.cache = cache
+        // Initialization log without exposing API keys
+        print("🔧 OpenAIService initialized")
     }
-    
+
     // MARK: - Public Methods
-    /// Enriches a launch with additional descriptive information using OpenAI.
-    /// - Parameter launch: The launch to enrich.
-    /// - Returns: An enriched `LaunchEnrichment` object.
+    /**
+     Enriches a launch with additional descriptive information using OpenAI.
+
+     - Parameter launch: The `Launch` instance to enrich.
+     - Returns: A `LaunchEnrichment` containing enhanced descriptions.
+     - Throws: `OpenAIServiceError` if enrichment fails.
+     */
     func enrichLaunch(_ launch: Launch) async throws -> LaunchEnrichment {
-        print("Enriching launch ID: \(launch.id) with OpenAI")
-        
-        if let cached = enrichmentCache[launch.id] {
-            print("Retrieved enrichment from in-memory cache for launch ID: \(launch.id)")
+        // Check if enrichment is already cached
+        if let cached = await cache.getCachedEnrichment(for: launch.id) {
+            print("💾 Using cached enrichment for launch: \(launch.name)")
             return cached
         }
-        
+
+        // Create OpenAI request
         let request = OpenAIRequest(
             model: Constants.model,
             messages: createPromptMessages(for: launch),
             temperature: 0.7,
             max_tokens: 500
         )
-        
-        do {
-            let enrichment = try await sendRequestWithRetry(request: request, retries: Constants.maxRetries)
-            enrichmentCache[launch.id] = enrichment
-            print("Successfully enriched launch ID: \(launch.id)")
-            return enrichment
-        } catch {
-            print("Failed to enrich launch ID: \(launch.id) with error: \(error)")
-            throw error
+
+        // Execute request with timeout
+        let enrichment = try await withTimeout(Constants.enrichmentTimeout) {
+            try await self.sendOpenAIRequest(request)
         }
+
+        // Cache the enrichment
+        await cache.cacheEnrichment(enrichment, for: launch.id)
+
+        print("✅ Enrichment successful for launch: \(launch.name)")
+        return enrichment
     }
-    
+
     // MARK: - Private Methods
-    /// Creates the prompt messages for the OpenAI API based on launch details.
-    /// - Parameter launch: The launch to create prompts for.
-    /// - Returns: An array of `Message` objects.
+    /// Creates prompt messages for OpenAI based on launch details.
     private func createPromptMessages(for launch: Launch) -> [Message] {
         let systemPrompt = """
-        You are a space mission analyst providing exciting descriptions of rocket launches.
-        Create two descriptions, with strict character limits:
-        1. Short summary (max 100 chars) capturing mission essence
-        2. Detailed overview (max 300 chars) including goals and specifications
-        
-        Format response as JSON:
+        You are a knowledgeable space mission analyst. Create engaging descriptions for a rocket launch using any available information.
+        Even with minimal data, provide informative descriptions based on the launch provider, rocket type, and similar historical missions.
+
+        Rules:
+        1. Never mention "unknown payload" or "details TBD"
+        2. For classified missions, focus on the rocket and provider capabilities
+        3. Use technical knowledge to make educated guesses about mission type based on orbit and launch site
+        4. Keep short description under 100 characters
+        5. Keep detailed description under 300 characters
+        6. Always be accurate but engaging
+
+        Format response strictly as JSON:
         {
-            "shortDescription": "Brief mission summary here",
-            "detailedDescription": "Comprehensive mission details here"
+            "shortDescription": "Brief mission summary",
+            "detailedDescription": "Comprehensive overview"
         }
         """
-        
-        let userPrompt = """
+
+        let context = buildLaunchContext(launch)
+
+        return [
+            Message(role: "system", content: systemPrompt),
+            Message(role: "user", content: context)
+        ]
+    }
+
+    /// Builds the context string for the OpenAI prompt based on launch details.
+    private func buildLaunchContext(_ launch: Launch) -> String {
+        return """
         Launch Details:
-        - Name: \(launch.name)
+        - Mission: \(launch.name)
         - Provider: \(launch.provider)
         - Rocket: \(launch.rocketName)
         - Location: \(launch.location)
-        - Orbit: \(launch.orbit ?? "N/A")
+        - Orbit: \(launch.orbit ?? "Not specified")
         - Date: \(launch.formattedDate)
+
+        Provider Context: \(getProviderInfo(launch.provider))
+        Launch Site: \(getLaunchSiteInfo(launch.location))
+        Mission Type Hints: \(getMissionTypeHints(launch))
         """
-        
-        return [
-            Message(role: "system", content: systemPrompt),
-            Message(role: "user", content: userPrompt)
-        ]
     }
-    
-    /// Sends a request to the OpenAI API with retry logic.
-    /// - Parameters:
-    ///   - request: The `OpenAIRequest` to send.
-    ///   - retries: The number of retry attempts.
-    /// - Returns: A `LaunchEnrichment` object.
-    private func sendRequestWithRetry(request: OpenAIRequest, retries: Int) async throws -> LaunchEnrichment {
-        var delay = Constants.initialDelay
-        var attempt = 1
-        
-        while attempt <= retries {
-            do {
-                print("Sending OpenAI request. Attempt \(attempt)")
-                let enrichment = try await sendOpenAIRequest(request)
-                print("OpenAI request successful on attempt \(attempt)")
-                return enrichment
-            } catch OpenAIServiceError.rateLimited {
-                print("OpenAI rate limited on attempt \(attempt)")
-                if attempt == retries {
-                    throw OpenAIServiceError.rateLimited
-                }
-                print("Retrying after \(delay / 1_000_000_000) seconds...")
-                try await executeRetryDelay(attempt: attempt, delay: delay)
-                delay = min(delay * 2, Constants.maxDelay)
-                attempt += 1
-            } catch {
-                print("OpenAI request failed on attempt \(attempt) with error: \(error)")
-                throw error
-            }
+
+    /// Provides contextual information about the launch provider.
+    private func getProviderInfo(_ provider: String) -> String {
+        switch provider.lowercased() {
+        case let p where p.contains("spacex"):
+            return "Commercial provider known for reusable rockets and Starlink missions"
+        case let p where p.contains("nasa"):
+            return "US space agency focused on exploration and scientific research"
+        case let p where p.contains("roscosmos"):
+            return "Russian space agency with extensive launch history"
+        case let p where p.contains("rocket lab"):
+            return "Specialized in small satellite launches with high frequency"
+        default:
+            return "Active launch provider in the space industry"
         }
-        throw OpenAIServiceError.rateLimited
     }
-    
-    /// Executes a delay before retrying a request.
-    /// - Parameters:
-    ///   - attempt: The current attempt number.
-    ///   - delay: The delay duration in nanoseconds.
-    private func executeRetryDelay(attempt: Int, delay: UInt64) async throws {
-        let jitter = UInt64.random(in: 0...100_000_000)
-        let totalDelay = min(delay, Constants.maxDelay) + jitter
-        print("Waiting for \(totalDelay / 1_000_000_000) seconds before retrying...")
-        try await Task.sleep(nanoseconds: totalDelay)
+
+    /// Provides contextual information about the launch site.
+    private func getLaunchSiteInfo(_ location: String) -> String {
+        switch location.lowercased() {
+        case let l where l.contains("kennedy"):
+            return "Historic Florida launch site suitable for all orbits"
+        case let l where l.contains("vandenberg"):
+            return "California site specialized for polar orbits"
+        case let l where l.contains("baikonur"):
+            return "Kazakhstan-based site with long history of crewed launches"
+        default:
+            return "Operational spaceport supporting orbital launches"
+        }
     }
-    
-    /// Sends a request to the OpenAI API.
-    /// - Parameter request: The `OpenAIRequest` to send.
-    /// - Returns: A `LaunchEnrichment` object.
+
+    /// Provides hints about the mission type based on launch name and orbit.
+    private func getMissionTypeHints(_ launch: Launch) -> String {
+        let name = launch.name.lowercased()
+        let orbit = launch.orbit?.lowercased() ?? ""
+
+        switch true {
+        case name.contains("starlink"):
+            return "Internet satellite constellation deployment"
+        case name.contains("crew"):
+            return "Human spaceflight mission"
+        case name.contains("cargo"):
+            return "Space station resupply mission"
+        case orbit.contains("geo"):
+            return "Likely communications or weather satellite"
+        case orbit.contains("leo"):
+            return "Earth observation or communications mission"
+        default:
+            return "Orbital space mission"
+        }
+    }
+
+    /// Sends the OpenAI request and parses the response.
     private func sendOpenAIRequest(_ request: OpenAIRequest) async throws -> LaunchEnrichment {
         guard let url = URL(string: Constants.endpoint) else {
-            print("Invalid OpenAI URL: \(Constants.endpoint)")
             throw OpenAIServiceError.invalidURL
         }
-        
+
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("Bearer \(Config.shared.openAIAPIKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = try encoder.encode(request)
-        
+
+        // Encode request
         do {
-            let (data, response) = try await urlSession.data(for: urlRequest)
-            try validateResponse(response as? HTTPURLResponse)
-            let enrichment = try parseOpenAIResponse(data)
-            return enrichment
+            urlRequest.httpBody = try encoder.encode(request)
         } catch {
-            print("Error during OpenAI request: \(error)")
-            throw error
+            throw OpenAIServiceError.processingError(detail: "Failed to encode request: \(error.localizedDescription)")
         }
-    }
-    
-    /// Validates the HTTP response from the OpenAI API.
-    /// - Parameter response: The `HTTPURLResponse` to validate.
-    private func validateResponse(_ response: HTTPURLResponse?) throws {
-        guard let response = response else {
-            print("No HTTP response received from OpenAI API")
+
+        // Send request
+        let (data, response) = try await urlSession.data(for: urlRequest)
+
+        // Validate response
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw OpenAIServiceError.invalidResponse
         }
-        
-        guard (200...299).contains(response.statusCode) else {
-            switch response.statusCode {
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            switch httpResponse.statusCode {
             case 429:
-                print("OpenAI API rate limited with status code: 429")
                 throw OpenAIServiceError.rateLimited
+            case 408, 504:
+                throw OpenAIServiceError.timeout
             default:
-                let message = HTTPURLResponse.localizedString(forStatusCode: response.statusCode)
-                print("OpenAI API server error with status code: \(response.statusCode), message: \(message)")
-                throw OpenAIServiceError.serverError(code: response.statusCode, message: message)
+                let message = HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                throw OpenAIServiceError.serverError(code: httpResponse.statusCode, message: message)
             }
         }
+
+        // Decode response
+        let openAIResponse = try decoder.decode(OpenAIResponse.self, from: data)
+        guard let content = openAIResponse.choices.first?.message.content else {
+            throw OpenAIServiceError.unexpectedFormat
+        }
+
+        // Parse JSON from content
+        guard let contentData = content.data(using: .utf8) else {
+            throw OpenAIServiceError.unexpectedFormat
+        }
+
+        let enrichment = try decoder.decode(LaunchEnrichment.self, from: contentData)
+        return enrichment
     }
-    
-    /// Parses the response data from the OpenAI API into a `LaunchEnrichment` object.
-    /// - Parameter data: The response `Data` from the API.
-    /// - Returns: A `LaunchEnrichment` object.
-    private func parseOpenAIResponse(_ data: Data) throws -> LaunchEnrichment {
-        do {
-            let response = try decoder.decode(OpenAIResponse.self, from: data)
-            guard let content = response.choices.first?.message.content,
-                  let contentData = content.data(using: .utf8) else {
-                print("Invalid content in OpenAI response")
-                throw OpenAIServiceError.processingError(detail: "Missing or invalid content in response")
+
+    /// Executes an asynchronous operation with a timeout.
+    private func withTimeout<T>(_ timeout: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        return try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
             }
-            
-            let enrichment = try decoder.decode(LaunchEnrichment.self, from: contentData)
-            return enrichment
-        } catch {
-            print("Failed to parse OpenAI response with error: \(error)")
-            throw OpenAIServiceError.processingError(detail: "Failed to decode enrichment: \(error.localizedDescription)")
+
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw OpenAIServiceError.timeout
+            }
+
+            guard let result = try await group.next() else {
+                throw OpenAIServiceError.timeout
+            }
+
+            group.cancelAll()
+            return result
         }
     }
-}
 
-// MARK: - Models
+    /// Generates fallback enrichment data if OpenAI enrichment fails.
+    private func generateFallbackEnrichment(for launch: Launch) -> LaunchEnrichment {
+        let shortDesc = "\(launch.provider) launch of \(launch.rocketName) from \(launch.location)."
+        let detailedDesc = """
+            \(launch.provider) is conducting a launch of their \(launch.rocketName) rocket from \(launch.location). \
+            This mission demonstrates the provider's ongoing commitment to space access and technological advancement.
+            """
 
-/// Represents a request to the OpenAI API.
-private struct OpenAIRequest: Codable {
-    let model: String
-    let messages: [Message]
-    let temperature: Double
-    let max_tokens: Int
-}
+        return LaunchEnrichment(
+            shortDescription: String(shortDesc.prefix(100)),
+            detailedDescription: String(detailedDesc.prefix(300))
+        )
+    }
 
-/// Represents a message in the OpenAI chat.
-private struct Message: Codable {
-    let role: String
-    let content: String
-}
+    // MARK: - Models
 
-/// Represents the response from the OpenAI API.
-private struct OpenAIResponse: Codable {
-    let choices: [Choice]
-    
-    struct Choice: Codable {
-        let message: Message
-        let finish_reason: String?
+    private struct OpenAIRequest: Codable {
+        let model: String
+        let messages: [Message]
+        let temperature: Double
+        let max_tokens: Int
+    }
+
+    private struct Message: Codable {
+        let role: String
+        let content: String
+    }
+
+    private struct OpenAIResponse: Codable {
+        let choices: [Choice]
+
+        struct Choice: Codable {
+            let message: Message
+            let finish_reason: String?
+        }
     }
 }

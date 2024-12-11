@@ -1,8 +1,10 @@
+// Utilities/ThemeColors.swift
+
 import SwiftUI
 
 /**
  A collection of theme colors used throughout the RocketLaunchTracker app.
-
+ 
  These static properties provide a consistent visual style across the UI, making it easy
  to maintain a cohesive look and feel. Each color is defined by a hexadecimal string and
  converted into a `Color` instance using the `Color(hex:)` initializer.

@@ -1,20 +1,38 @@
+// Services/APIManager.swift
+
 import Foundation
 
-/// Manages API interactions, including fetching launches and handling enrichments.
+/**
+ Manages API interactions, including fetching launches and handling enrichments.
+ 
+ Utilizes a shared instance for centralized API management.
+ */
 actor APIManager {
     static let shared = APIManager()
-    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=50"
-    private let maxRetries = 3
-    private let initialRetryDelay: UInt64 = 500_000_000 // 0.5 seconds
     
+    // MARK: - Constants
+    private enum Constants {
+        static let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/"
+        static let limit = 10
+        static let maxRetries = 3
+        static let initialRetryDelay: TimeInterval = 0.5 // in seconds
+        
+        // Exponential backoff factors
+        static let backoffFactor: Double = 2.0
+        static let maxRetryDelay: TimeInterval = 60.0 // 1 minute
+    }
+    
+    // MARK: - Properties
     private let cache: CacheManager
     private let openAIService: OpenAIService
     private let urlSession: URLSession
     private let enrichmentQueue: TaskQueue
     
     private var nextURLString: String?
-    private var isEnrichingBatch = false
+    private var updateTimers: [String: [Task<Void, Never>]] = [:]
+    private var loadedLaunches: Set<String> = []
     
+    // MARK: - Initialization
     private init(
         cache: CacheManager = .shared,
         openAIService: OpenAIService = .shared,
@@ -26,174 +44,346 @@ actor APIManager {
         self.urlSession = urlSession
         self.enrichmentQueue = TaskQueue(maxConcurrent: maxConcurrentEnrichments)
         
-        print("APIManager initialized with baseURL: \(baseURL)")
+        // Log the SpaceDevs API Key
+        print("🔑 SpaceDevs API Key: \(Config.shared.spaceDevsAPIKey)")
     }
     
-    /// Fetches upcoming launches, utilizing cache if available.
-    /// - Returns: An array of `Launch` objects.
-    func fetchLaunches() async throws -> [Launch] {
-        print("fetchLaunches() called")
+    // MARK: - Public Methods
+    
+    /// Fetches initial batch of launches for quick display
+    func fetchInitialLaunches() async throws -> [Launch] {
+        let url = "\(Constants.baseURL)?limit=\(Constants.limit)"
+        let response = try await fetchFromSpaceDevs(urlString: url)
+        let launches = response.results.map { convertToAppLaunch($0) }
         
-        if let cached = await cache.getCachedLaunches() {
-            print("Fetched launches from cache. Count: \(cached.count)")
-            startBackgroundEnrichment(for: cached)
-            return cached
-        }
+        // Cache and start background tasks
+        await cache.cacheLaunches(launches)
+        setupUpdateTimers(for: launches)
+        startBackgroundEnrichment(for: launches)
         
-        print("Fetching launches from SpaceDevs API")
-        let response = try await fetchFromSpaceDevs(urlString: baseURL)
-        let launches = response.results.map { $0.toAppLaunch() }
-        print("Fetched \(launches.count) launches from API")
+        // Update nextURLString for pagination
+        nextURLString = response.next
+        return launches
+    }
+    
+    /// Fetches remaining launches after initial batch
+    func fetchRemainingLaunches() async throws -> [Launch] {
+        guard let nextURL = nextURLString else { return [] }
+        
+        let response = try await fetchFromSpaceDevs(urlString: nextURL)
+        let launches = response.results.map { convertToAppLaunch($0) }
         
         await cache.cacheLaunches(launches)
-        print("Cached launches")
+        setupUpdateTimers(for: launches)
         startBackgroundEnrichment(for: launches)
         
+        // Update nextURLString for further pagination
+        nextURLString = response.next
         return launches
     }
     
-    /// Fetches additional launches using the next URL if available.
-    /// - Returns: An optional array of `Launch` objects.
-    func fetchMoreLaunches() async throws -> [Launch]? {
-        guard let nextURL = nextURLString else {
-            print("No more launches to fetch.")
-            return nil
+    /// Fetches all launches, utilizing cached data if available
+    func fetchLaunches() async throws -> [Launch] {
+        // Try to get cached launches first
+        if let cachedLaunches = await cache.getCachedLaunches(), !cachedLaunches.isEmpty {
+            print("Using cached launches. Count: \(cachedLaunches.count)")
+            // Start background fetching of remaining launches
+            Task.detached {
+                do {
+                    let remaining = try await self.fetchRemainingLaunches()
+                    print("Fetched remaining launches in background. Count: \(remaining.count)")
+                } catch {
+                    print("Failed to fetch remaining launches in background: \(error)")
+                }
+            }
+            return cachedLaunches
         }
         
-        print("Fetching more launches from URL: \(nextURL)")
-        let response = try await fetchFromSpaceDevs(urlString: nextURL)
-        let launches = response.results.map { $0.toAppLaunch() }
-        print("Fetched \(launches.count) more launches from API")
-        startBackgroundEnrichment(for: launches)
-        
-        return launches
+        // If no cached launches, fetch initial batch
+        return try await fetchInitialLaunches()
     }
     
-    /// Initiates background enrichment for a batch of launches.
-    /// - Parameter launches: The launches to enrich.
+    /// Fetches a specific launch by ID
+    func fetchLaunch(by id: String) async throws -> Launch? {
+        let url = "\(Constants.baseURL)\(id)/"
+        return try await fetchSingleLaunch(urlString: url)
+    }
+    
+    /// Updates a specific launch
+    func updateLaunch(_ launchId: String) async throws -> Launch? {
+        return try await fetchLaunch(by: launchId)
+    }
+    
+    /// Fetches more launches, used for pagination
+    func fetchMoreLaunches() async throws -> [Launch] {
+        return try await fetchRemainingLaunches()
+    }
+    
+    // MARK: - Private Methods
+    
+    /// Sets up update timers for launches
+    private func setupUpdateTimers(for launches: [Launch]) {
+        for launch in launches {
+            setupUpdateTimer(for: launch)
+        }
+    }
+    
+    /// Sets up update timers for a specific launch
+    private func setupUpdateTimer(for launch: Launch) {
+        // Cancel existing timers if any
+        if let existingTimers = updateTimers[launch.id] {
+            for timer in existingTimers {
+                timer.cancel()
+            }
+        }
+        
+        var timers: [Task<Void, Never>] = []
+        
+        let oneWeekBefore = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: launch.launchDate)
+        let oneDayBefore = Calendar.current.date(byAdding: .day, value: -1, to: launch.launchDate)
+        let dayOfLaunch = launch.launchDate
+        
+        // Schedule once a week before launch
+        if let date = oneWeekBefore, date > Date() {
+            let timer = scheduleUpdate(at: date, for: launch)
+            timers.append(timer)
+        }
+        
+        // Schedule once a day before launch
+        if let date = oneDayBefore, date > Date() {
+            let timer = scheduleUpdate(at: date, for: launch)
+            timers.append(timer)
+        }
+        
+        // Schedule once on the day of launch
+        if dayOfLaunch > Date() {
+            let timer = scheduleUpdate(at: dayOfLaunch, for: launch)
+            timers.append(timer)
+        }
+        
+        updateTimers[launch.id] = timers
+    }
+    
+    /// Schedules an update task at a specific date for a launch
+    private func scheduleUpdate(at date: Date, for launch: Launch) -> Task<Void, Never> {
+        let waitTime = date.timeIntervalSinceNow
+        guard waitTime > 0 else { return Task { } } // If the time has already passed, skip
+        
+        return Task {
+            try? await Task.sleep(nanoseconds: UInt64(waitTime * 1_000_000_000))
+            do {
+                if let updatedLaunch = try await updateLaunch(launch.id) {
+                    NotificationCenter.default.post(
+                        name: .launchDataUpdated,
+                        object: nil,
+                        userInfo: ["launchId": launch.id, "launch": updatedLaunch]
+                    )
+                    print("🔄 Launch data updated for ID: \(launch.id) at \(Date())")
+                }
+            } catch {
+                print("❌ Failed to update launch \(launch.id) at \(Date()): \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Starts background enrichment for launches
     private func startBackgroundEnrichment(for launches: [Launch]) {
-        print("Starting background enrichment for \(launches.count) launches")
         Task.detached(priority: .background) {
             await self.enrichUnenrichedLaunches(launches)
         }
     }
     
-    /// Fetches launches from the SpaceDevs API with retry logic.
-    /// - Parameter urlString: The URL string to fetch data from.
-    /// - Returns: A `SpaceDevsResponse` object.
-    private func fetchFromSpaceDevs(urlString: String) async throws -> SpaceDevsResponse {
-        print("Fetching from SpaceDevs API with URL: \(urlString)")
+    /// Enriches launches that lack enriched data
+    private func enrichUnenrichedLaunches(_ launches: [Launch]) async {
+        var unenrichedLaunches: [Launch] = []
+        
+        for launch in launches {
+            if await cache.getCachedEnrichment(for: launch.id) == nil {
+                unenrichedLaunches.append(launch)
+            }
+        }
+        
+        guard !unenrichedLaunches.isEmpty else {
+            print("✅ All launches already enriched.")
+            return
+        }
+        
+        for launch in unenrichedLaunches {
+            do {
+                try await enrichmentQueue.enqueue {
+                    do {
+                        let enrichment = try await self.openAIService.enrichLaunch(launch)
+                        await self.cache.cacheEnrichment(enrichment, for: launch.id)
+                        
+                        NotificationCenter.default.post(
+                            name: .launchEnrichmentUpdated,
+                            object: nil,
+                            userInfo: ["launchId": launch.id]
+                        )
+                        
+                        print("✅ Enriched launch with ID: \(launch.id)")
+                    } catch {
+                        print("❌ Failed to enrich launch \(launch.id): \(error.localizedDescription)")
+                    }
+                }
+            } catch {
+                print("❌ Unable to enqueue enrichment for launch \(launch.id): \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Fetches data from SpaceDevs API
+    private func fetchFromSpaceDevs(urlString: String, retryCount: Int = 0) async throws -> SpaceDevsResponse {
         guard let url = URL(string: urlString) else {
-            print("Invalid URL: \(urlString)")
             throw APIError.invalidURL
         }
         
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        let spaceDevsAPIKey = Config.shared.spaceDevsAPIKey
+        guard !spaceDevsAPIKey.isEmpty else {
+            throw APIError.invalidAPIKey
+        }
+        request.setValue("Bearer \(spaceDevsAPIKey)", forHTTPHeaderField: "Authorization")
+        
         do {
-            let (data, response) = try await fetchWithRetry(url: url)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("Invalid response received from URL: \(urlString)")
-                throw APIError.invalidResponse
-            }
+            let (data, response) = try await urlSession.data(for: request)
             
-            switch httpResponse.statusCode {
-            case 200...299:
-                let decodedResponse = try JSONDecoder().decode(SpaceDevsResponse.self, from: data)
-                self.nextURLString = decodedResponse.next
-                print("Received successful response with status code: \(httpResponse.statusCode)")
-                return decodedResponse
-            case 429:
-                print("Rate limited by API with status code: 429")
-                throw APIError.rateLimited
+            try validateResponse(response, data: data)
+            let decoded = try JSONDecoder().decode(SpaceDevsResponse.self, from: data)
+            return decoded
+        } catch let error as APIError {
+            switch error {
+            case .rateLimited(let retryAfter, _):
+                if retryCount < Constants.maxRetries {
+                    let exponentialDelay = Constants.initialRetryDelay * pow(Constants.backoffFactor, Double(retryCount))
+                    let jitter = Double.random(in: 0...1)
+                    let delay = min(retryAfter, min(exponentialDelay + jitter, Constants.maxRetryDelay))
+                    
+                    print("⚠️ Rate limited. Retrying after \(delay) seconds.")
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    return try await fetchFromSpaceDevs(urlString: urlString, retryCount: retryCount + 1)
+                }
+                throw error
             default:
-                print("Server error with status code: \(httpResponse.statusCode)")
-                throw APIError.serverError(code: httpResponse.statusCode)
+                throw error
             }
-        } catch {
-            print("Error fetching from SpaceDevs API: \(error)")
-            throw error
         }
     }
     
-    /// Enriches unenriched launches by fetching additional data.
-    /// - Parameter launches: The launches to enrich.
-    private func enrichUnenrichedLaunches(_ launches: [Launch]) async {
-        guard !isEnrichingBatch else {
-            print("Enrichment already in progress. Skipping new batch.")
-            return
-        }
-        isEnrichingBatch = true
-        defer { isEnrichingBatch = false }
-        
-        var unenriched: [Launch] = []
-        for launch in launches {
-            if await cache.getCachedEnrichment(for: launch.id) == nil {
-                unenriched.append(launch)
-            }
+    /// Fetches a single launch
+    private func fetchSingleLaunch(urlString: String) async throws -> Launch? {
+        guard let url = URL(string: urlString) else {
+            throw APIError.invalidURL
         }
         
-        print("Found \(unenriched.count) unenriched launches to process")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
         
-        await withTaskGroup(of: Void.self) { group in
-            for launch in unenriched {
-                group.addTask {
-                    await self.enrichLaunch(launch)
+        let spaceDevsAPIKey = Config.shared.spaceDevsAPIKey
+        guard !spaceDevsAPIKey.isEmpty else {
+            throw APIError.invalidAPIKey
+        }
+        request.setValue("Bearer \(spaceDevsAPIKey)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await urlSession.data(for: request)
+        try validateResponse(response, data: data)
+        
+        let spaceDevsLaunch = try JSONDecoder().decode(SpaceDevsLaunch.self, from: data)
+        let launch = convertToAppLaunch(spaceDevsLaunch)
+        
+        if let enrichment = await cache.getCachedEnrichment(for: launch.id) {
+            let enrichedLaunch = Launch(
+                id: launch.id,
+                name: launch.name,
+                launchDate: launch.launchDate,
+                status: launch.status,
+                rocketName: launch.rocketName,
+                provider: launch.provider,
+                location: launch.location,
+                imageURL: launch.imageURL,
+                shortDescription: enrichment.shortDescription,
+                detailedDescription: enrichment.detailedDescription,
+                orbit: launch.orbit,
+                wikiURL: launch.wikiURL,
+                twitterURL: nil,
+                badges: nil
+            )
+            await cache.cacheLaunches([enrichedLaunch])
+            return enrichedLaunch
+        }
+        
+        await cache.cacheLaunches([launch])
+        return launch
+    }
+    
+    /// Converts SpaceDevsLaunch to Launch model
+    private func convertToAppLaunch(_ spaceDevsLaunch: SpaceDevsLaunch) -> Launch {
+        let dateFormatter = ISO8601DateFormatter()
+        let launchDate = dateFormatter.date(from: spaceDevsLaunch.net) ?? Date()
+        let mappedStatus = LaunchStatus(fromAPIStatus: spaceDevsLaunch.status.name)
+        
+        return Launch(
+            id: spaceDevsLaunch.id,
+            name: spaceDevsLaunch.name,
+            launchDate: launchDate,
+            status: mappedStatus,
+            rocketName: spaceDevsLaunch.rocket.configuration.fullName,
+            provider: spaceDevsLaunch.launchServiceProvider.name,
+            location: spaceDevsLaunch.pad.location.name,
+            imageURL: spaceDevsLaunch.image?.imageURL,
+            shortDescription: nil,
+            detailedDescription: nil,
+            orbit: spaceDevsLaunch.orbit?.name,
+            wikiURL: spaceDevsLaunch.pad.wikiURL,
+            twitterURL: nil,
+            badges: nil
+        )
+    }
+    
+    /// Validates response and handles common error cases
+    private func validateResponse(_ response: URLResponse?, data: Data) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            switch httpResponse.statusCode {
+            case 429:
+                if let retryAfter = parseRetryAfter(from: data) {
+                    throw APIError.rateLimited(retryAfter: retryAfter, message: "Rate limit exceeded.")
+                } else {
+                    throw APIError.rateLimited(retryAfter: Constants.initialRetryDelay, message: "Rate limit exceeded.")
                 }
+            case 401:
+                throw APIError.invalidAPIKey
+            default:
+                let message = HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+                throw APIError.serverError(code: httpResponse.statusCode, message: message)
             }
         }
-        
-        print("Completed enrichment for batch of launches")
     }
     
-    /// Enriches a single launch by fetching additional data from OpenAI.
-    /// - Parameter launch: The launch to enrich.
-    private func enrichLaunch(_ launch: Launch) async {
-        print("Starting enrichment for launch ID: \(launch.id)")
+    /// Parses retry-after time from response data
+    private func parseRetryAfter(from data: Data) -> TimeInterval? {
+        struct ErrorResponse: Codable {
+            let detail: String
+        }
+        
         do {
-            try await enrichmentQueue.enqueue {
-                let enrichment = try await self.openAIService.enrichLaunch(launch)
-                await self.cache.cacheEnrichment(enrichment, for: launch.id)
-                
-                NotificationCenter.default.post(
-                    name: .launchEnrichmentUpdated,
-                    object: nil,
-                    userInfo: ["launchId": launch.id]
-                )
-                print("Enrichment completed for launch ID: \(launch.id)")
+            let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: data)
+            let pattern = #"Expected available in (\d+) seconds."#
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+               let match = regex.firstMatch(in: errorResponse.detail, options: [], range: NSRange(location: 0, length: errorResponse.detail.utf16.count)),
+               match.numberOfRanges > 1,
+               let range = Range(match.range(at: 1), in: errorResponse.detail),
+               let seconds = TimeInterval(errorResponse.detail[range]) {
+                return seconds
             }
         } catch {
-            print("Failed to enrich launch ID: \(launch.id) with error: \(error)")
-            // Error handled silently as enrichment is non-critical
+            print("❌ Failed to parse error response: \(error.localizedDescription)")
         }
-    }
-    
-    /// Fetches data from a URL with retry logic.
-    /// - Parameter url: The URL to fetch data from.
-    /// - Returns: A tuple containing `Data` and `URLResponse`.
-    private func fetchWithRetry(url: URL) async throws -> (Data, URLResponse) {
-        var delay = initialRetryDelay
-        var attempt = 1
-        
-        while true {
-            do {
-                print("Attempt \(attempt) to fetch URL: \(url.absoluteString)")
-                let request = URLRequest(url: url,
-                                         cachePolicy: .returnCacheDataElseLoad,
-                                         timeoutInterval: 30)
-                let result = try await urlSession.data(for: request)
-                print("Successfully fetched data on attempt \(attempt)")
-                return result
-            } catch {
-                print("Attempt \(attempt) failed with error: \(error)")
-                guard attempt < maxRetries else {
-                    print("Max retries reached. Throwing error.")
-                    throw APIError.networkError(error)
-                }
-                
-                print("Retrying after \(delay / 1_000_000_000) seconds...")
-                try await Task.sleep(nanoseconds: delay)
-                delay *= 2
-                attempt += 1
-            }
-        }
+        return nil
     }
 }

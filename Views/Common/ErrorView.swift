@@ -14,10 +14,7 @@ struct ErrorView: View {
         static let buttonHorizontalPadding: CGFloat = 60
         static let cornerRadius: CGFloat = 20
         static let buttonCornerRadius: CGFloat = 10
-        static let shadowRadius: CGFloat = 10
-        static let shadowOffset: CGFloat = 5
-        static let backgroundOpacity: Double = 0.9
-        static let shadowOpacity: Double = 0.5
+        // Removed shadow-related constants
     }
     
     // MARK: - Body
@@ -30,15 +27,10 @@ struct ErrorView: View {
         .padding()
         .background(
             ThemeColors.darkGray
-                .opacity(Constants.backgroundOpacity)
+                .opacity(0.9) // Using direct opacity value
         )
         .cornerRadius(Constants.cornerRadius)
-        .shadow(
-            color: ThemeColors.lunarRock.opacity(Constants.shadowOpacity),
-            radius: Constants.shadowRadius,
-            x: 0,
-            y: Constants.shadowOffset
-        )
+        // Removed shadow modifier
         .padding()
     }
     
@@ -93,6 +85,6 @@ struct ErrorView_Previews: PreviewProvider {
         }
         .previewLayout(.sizeThatFits)
         .padding()
-        .background(Color.black)
+        .background(ThemeColors.spaceBlack)
     }
 }

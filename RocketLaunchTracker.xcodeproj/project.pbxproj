@@ -81,6 +81,11 @@
 			path = ShareExtension;
 			sourceTree = "<group>";
 		};
+		75B471B42D08BC3800193BAF /* Models */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Models;
+			sourceTree = "<group>";
+		};
 		75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -102,11 +107,6 @@
 		75E8BF3F2CF2F72600A40CB1 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = App;
-			sourceTree = "<group>";
-		};
-		75E8BF442CF2F74300A40CB1 /* Models */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Models;
 			sourceTree = "<group>";
 		};
 		75E8BF452CF2F76900A40CB1 /* Utilities */ = {
@@ -166,11 +166,11 @@
 		75E8BF022CF2F45B00A40CB1 = {
 			isa = PBXGroup;
 			children = (
+				75B471B42D08BC3800193BAF /* Models */,
 				75E8BF602CF2FB0B00A40CB1 /* ViewModels */,
 				75E8BF472CF2F77A00A40CB1 /* Services */,
 				75E8BF462CF2F77300A40CB1 /* Views */,
 				75E8BF452CF2F76900A40CB1 /* Utilities */,
-				75E8BF442CF2F74300A40CB1 /* Models */,
 				75E8BF3F2CF2F72600A40CB1 /* App */,
 				75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */,
 				75E8BF1F2CF2F45C00A40CB1 /* RocketLaunchTrackerTests */,
@@ -231,9 +231,9 @@
 				75B4717D2D0769E200193BAF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				75B471B42D08BC3800193BAF /* Models */,
 				75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */,
 				75E8BF3F2CF2F72600A40CB1 /* App */,
-				75E8BF442CF2F74300A40CB1 /* Models */,
 				75E8BF452CF2F76900A40CB1 /* Utilities */,
 				75E8BF462CF2F77300A40CB1 /* Views */,
 				75E8BF472CF2F77A00A40CB1 /* Services */,

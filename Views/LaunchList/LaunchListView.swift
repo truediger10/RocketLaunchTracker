@@ -2,15 +2,22 @@ import SwiftUI
 
 /// A list view displaying upcoming launches. Allows for searching, filtering, and viewing details.
 struct LaunchListView: View {
-    @StateObject private var viewModel = LaunchViewModel()
+    @ObservedObject var viewModel: LaunchViewModel
+    let isNotableTab: Bool
+    
     @State private var selectedLaunch: Launch?
     @State private var showingFilter = false
-    @State private var showLaunchesWithBadgesOnly = false
     
     // Common spacing and padding constants
     private let horizontalPadding: CGFloat = 16
     private let verticalPadding: CGFloat = 20
     private let cardSpacing: CGFloat = 20
+    
+    private var displayedLaunches: [Launch] {
+        isNotableTab
+        ? viewModel.filteredLaunches.filter { !($0.badges?.isEmpty ?? true) }
+        : viewModel.filteredLaunches
+    }
     
     var body: some View {
         NavigationView {
@@ -20,7 +27,7 @@ struct LaunchListView: View {
                 
                 ScrollView {
                     LazyVStack(spacing: cardSpacing) {
-                        ForEach(filteredLaunches) { launch in
+                        ForEach(displayedLaunches) { launch in
                             LaunchCard(launch: launch)
                                 .onTapGesture {
                                     selectedLaunch = launch
@@ -31,7 +38,7 @@ struct LaunchListView: View {
                     }
                     .padding(.vertical, verticalPadding)
                 }
-                .navigationTitle("Upcoming Launches")
+                .navigationTitle(isNotableTab ? "Notable Launches" : "All Launches")
                 .toolbar { toolbarContent }
                 .searchable(
                     text: $viewModel.searchQuery,
@@ -56,23 +63,12 @@ struct LaunchListView: View {
                 }
             }
         }
-        .accessibilityLabel("List of upcoming rocket launches.")
-    }
-    
-    /// Filters launches based on whether the user has enabled showing only launches with badges.
-    private var filteredLaunches: [Launch] {
-        showLaunchesWithBadgesOnly
-            ? viewModel.filteredLaunches.filter { !($0.badges?.isEmpty ?? true) }
-            : viewModel.filteredLaunches
+        .accessibilityLabel(isNotableTab ? "List of notable launches." : "List of all launches.")
     }
     
     // MARK: - Toolbar Content
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarLeading) {
-            Toggle("Notable Launches", isOn: $showLaunchesWithBadgesOnly)
-                .toggleStyle(SwitchToggleStyle(tint: ThemeColors.brightYellow))
-        }
         ToolbarItem(placement: .navigationBarTrailing) {
             Button(action: { showingFilter = true }) {
                 Image(systemName: "line.3.horizontal.decrease.circle")
@@ -86,17 +82,20 @@ struct LaunchListView: View {
     // MARK: - Overlay Content
     @ViewBuilder
     private var overlayContent: some View {
-        if viewModel.isLoading {
+        switch viewModel.viewState {
+        case .loading:
             loadingOverlay
-        }
-        
-        if let error = viewModel.error {
-            ErrorView(error: error) {
-                Task { await viewModel.fetchLaunches() }
+        case .error(let message):
+            ErrorView(error: message) {
+                Task {
+                    await viewModel.fetchLaunches()
+                }
             }
             .transition(.opacity)
             .accessibilityLabel("An error occurred while loading launches.")
-            .accessibilityHint("Error details: \(error)")
+            .accessibilityHint("Error details: \(message)")
+        case .loaded, .idle:
+            EmptyView()
         }
     }
     

@@ -17,10 +17,18 @@ xcuserdata/
 
 # Schemes
 *.xcscheme
+!default.xcscheme
+
+# Specific scheme files
+RocketLaunchTracker.xcodeproj/xcshareddata/xcschemes/RocketLaunchTracker.xcscheme
 
 # Others
 *.swp
 *.lock
 
-# Exclude specific scheme files containing sensitive information
-RocketLaunchTracker.xcodeproj/xcshareddata/xcschemes/RocketLaunchTracker.xcscheme
+# Sensitive Configuration Files
+Configurations/*.plist
+Secrets/*.json
+
+# Logs
+*.log
