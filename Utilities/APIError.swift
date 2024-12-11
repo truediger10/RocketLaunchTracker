@@ -9,21 +9,21 @@ enum APIError: LocalizedError {
     case rateLimited
     case serverError(code: Int)
     case networkError(Error)
-    case decodingError(Error) // Added decodingError
+    case decodingError(Error)
     case unknownError
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "The API URL is invalid."
+            return "Invalid URL."
         case .invalidResponse:
-            return "Received an invalid response from the server."
+            return "Invalid response from server."
         case .rateLimited:
-            return "Rate limit exceeded. Please try again later."
+            return "Rate limit exceeded."
         case .serverError(let code):
-            return "Server encountered an error with status code \(code)."
+            return "Server error with code: \(code)."
         case .networkError(let error):
-            return "Network error occurred: \(error.localizedDescription)"
+            return error.localizedDescription
         case .decodingError(let error):
             return "Decoding error: \(error.localizedDescription)"
         case .unknownError:
