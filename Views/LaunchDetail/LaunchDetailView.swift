@@ -243,9 +243,10 @@ struct LaunchDetailView: View {
     @ViewBuilder
     private func shareSection(url: URL) -> some View {
         TweetButtonView(
-            url: url,
             text: "Check out this launch!",
-            showCount: false
+            url: url,
+            hashtags: "",
+            via: ""
         )
         .frame(height: 120)
         .padding(.top, 8)

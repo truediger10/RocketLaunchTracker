@@ -178,8 +178,3 @@ class LaunchViewModel: ObservableObject {
         objectWillChange.send()
     }
 }
-
-// MARK: - Notification Names
-extension Notification.Name {
-    static let launchEnrichmentUpdated = Notification.Name("launchEnrichmentUpdated")
-}
