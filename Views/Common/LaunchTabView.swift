@@ -1,42 +1,41 @@
 import SwiftUI
 import UIKit
 
+/// An enumeration representing the two launch tabs.
 enum LaunchTab: Equatable {
     case notable
     case upcoming
-    
+
     var title: String {
         switch self {
-        case .notable:
-            return "Notable"
-        case .upcoming:
-            return "Upcoming"
+        case .notable: return "Notable"
+        case .upcoming: return "Upcoming"
         }
     }
-    
+
     var systemImageName: String {
         switch self {
-        case .notable:
-            return "medal.star.fill"
-        case .upcoming:
-            return "circle.hexagongrid"
+        case .notable: return "medal.star.fill"
+        case .upcoming: return "circle.hexagongrid"
         }
     }
 }
 
+/// A view that displays the main tabbed interface for launch lists.
 struct LaunchTabView: View {
     @StateObject private var viewModel = LaunchViewModel()
     @State private var selectedTab: LaunchTab = .notable
-    @State private var isTabButtonAnimating = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            // Display notable launches.
             LaunchListView(viewModel: viewModel, isNotableTab: true)
                 .tabItem {
                     TabButton(tab: .notable, isSelected: selectedTab == .notable)
                 }
                 .tag(LaunchTab.notable)
-            
+
+            // Display upcoming (or all) launches.
             LaunchListView(viewModel: viewModel, isNotableTab: false)
                 .tabItem {
                     TabButton(tab: .upcoming, isSelected: selectedTab == .upcoming)
@@ -47,10 +46,11 @@ struct LaunchTabView: View {
     }
 }
 
+/// A custom tab button used in the LaunchTabView.
 struct TabButton: View {
     let tab: LaunchTab
     let isSelected: Bool
-    
+
     @State private var isAnimating = false
 
     var body: some View {
@@ -73,8 +73,3 @@ struct TabButton: View {
     }
 }
 
-struct LaunchTabView_Previews: PreviewProvider {
-    static var previews: some View {
-        LaunchTabView()
-    }
-}

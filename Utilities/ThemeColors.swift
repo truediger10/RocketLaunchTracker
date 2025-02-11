@@ -12,6 +12,8 @@ import SwiftUI
  Consider using dynamic colors or additional accessibility settings when possible.
  */
 struct ThemeColors {
+    static let upcomingColor = Color.orange
+    static let notableColor = Color.purple
     /// A deep black used as a primary background color, evoking the vastness of space.
     static let spaceBlack = Color(hex: "121212")
     

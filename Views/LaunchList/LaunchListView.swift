@@ -1,51 +1,50 @@
-// Views/LaunchList/LaunchListView.swift
-
 import SwiftUI
 
-/// A list view displaying upcoming launches. Allows for searching, filtering, and viewing details.
+/// A list view displaying upcoming launches with searching, filtering, and detailed navigation.
 struct LaunchListView: View {
-    @StateObject var viewModel: LaunchViewModel // Changed to @StateObject
+    @StateObject var viewModel: LaunchViewModel
     let isNotableTab: Bool
     
     @State private var selectedLaunch: Launch?
     @State private var showingFilter = false
     
-    // Common spacing and padding constants
-    private let horizontalPadding: CGFloat = 16
-    private let verticalPadding: CGFloat = 20
-    private let cardSpacing: CGFloat = 20
+    private struct Metrics {
+        static let horizontalPadding: CGFloat = 16
+        static let verticalPadding: CGFloat = 20
+        static let cardSpacing: CGFloat = 20
+    }
     
+    /// When in notable mode, filter launches to only those marked as notable.
     private var displayedLaunches: [Launch] {
-        isNotableTab
-        ? viewModel.filteredLaunches.filter { !($0.badges?.isEmpty ?? true) }
-        : viewModel.filteredLaunches
+        if isNotableTab {
+            return viewModel.filteredLaunches.filter { launch in
+                launch.badges?.contains(.notable) ?? false
+            }
+        } else {
+            return viewModel.filteredLaunches
+        }
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 ThemeColors.spaceBlack
-                    .edgesIgnoringSafeArea(.all)
-                
+                    .ignoresSafeArea()
                 ScrollView {
-                    LazyVStack(spacing: cardSpacing) {
+                    LazyVStack(spacing: Metrics.cardSpacing) {
                         ForEach(displayedLaunches) { launch in
                             LaunchCard(launch: launch)
-                                .onTapGesture {
-                                    selectedLaunch = launch
-                                }
-                                .padding(.horizontal, horizontalPadding)
+                                .onTapGesture { selectedLaunch = launch }
+                                .padding(.horizontal, Metrics.horizontalPadding)
                                 .accessibilityHint("Tap for details about \(launch.name)")
                         }
                     }
-                    .padding(.vertical, verticalPadding)
+                    .padding(.vertical, Metrics.verticalPadding)
                 }
+                .scrollContentBackground(.hidden)
                 .navigationTitle(isNotableTab ? "Notable Launches" : "All Launches")
                 .toolbar { toolbarContent }
-                .searchable(
-                    text: $viewModel.searchQuery,
-                    prompt: "Search launches..."
-                )
+                .searchable(text: $viewModel.searchQuery, prompt: "Search launches...")
                 .overlay { overlayContent }
                 .sheet(isPresented: $showingFilter) {
                     FilterView(criteria: $viewModel.criteria)
@@ -55,9 +54,7 @@ struct LaunchListView: View {
                     LaunchDetailView(launch: launch)
                         .presentationDetents([.large])
                 }
-                .refreshable {
-                    await viewModel.fetchLaunches()
-                }
+                .refreshable { await viewModel.fetchLaunches() }
                 .task {
                     if viewModel.filteredLaunches.isEmpty {
                         await viewModel.fetchLaunches()
@@ -68,20 +65,35 @@ struct LaunchListView: View {
         .accessibilityLabel(isNotableTab ? "List of notable launches." : "List of all launches.")
     }
     
-    // MARK: - Toolbar Content
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Button(action: { showingFilter = true }) {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                    .foregroundColor(ThemeColors.brightYellow)
+        ToolbarItemGroup(placement: .navigationBarTrailing) {
+            // Filter Button
+            Button {
+                showingFilter = true
+            } label: {
+                Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                    .labelStyle(IconOnlyLabelStyle())
                     .font(.title2)
-                    .accessibilityLabel("Filter launches")
+                    .foregroundColor(ThemeColors.brightYellow)
             }
+            .accessibilityLabel("Filter launches")
+            .accessibilityHint("Tap to show filter options")
+            
+            // Refresh Button
+            Button {
+                Task { await viewModel.fetchLaunches() }
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+                    .labelStyle(IconOnlyLabelStyle())
+                    .font(.title2)
+                    .foregroundColor(ThemeColors.brightYellow)
+            }
+            .accessibilityLabel("Refresh launches")
+            .accessibilityHint("Tap to reload launch data")
         }
     }
     
-    // MARK: - Overlay Content
     @ViewBuilder
     private var overlayContent: some View {
         switch viewModel.viewState {
@@ -89,9 +101,7 @@ struct LaunchListView: View {
             loadingOverlay
         case .error(let message):
             ErrorView(error: message) {
-                Task {
-                    await viewModel.fetchLaunches()
-                }
+                Task { await viewModel.fetchLaunches() }
             }
             .transition(.opacity)
             .accessibilityLabel("An error occurred while loading launches.")
@@ -101,7 +111,6 @@ struct LaunchListView: View {
         }
     }
     
-    /// Displays a loading overlay when fetching launches.
     private var loadingOverlay: some View {
         ProgressView("Loading launches...")
             .scaleEffect(1.5)
@@ -109,7 +118,7 @@ struct LaunchListView: View {
             .background(
                 ThemeColors.spaceBlack
                     .opacity(0.7)
-                    .edgesIgnoringSafeArea(.all)
+                    .ignoresSafeArea()
             )
     }
 }

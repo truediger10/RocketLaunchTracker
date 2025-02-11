@@ -15,7 +15,6 @@ struct LaunchImageView: View {
             ThemeColors.spaceBlack
         ]
         static let errorIconSize: CGFloat = 60
-        static let aspectRatio: CGFloat = 16/9
         static let cornerRadius: CGFloat = 12
     }
     
@@ -33,16 +32,14 @@ struct LaunchImageView: View {
             AsyncImage(url: URL(string: imageURL ?? "")) { phase in
                 switch phase {
                 case .empty:
-                    loadingPlaceholder
+                    loadingPlaceholder(width: geometry.size.width)
                 case .success(let image):
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
-                        .onAppear {
-                            onImageLoaded?()
-                        }
+                        .onAppear { onImageLoaded?() }
                         .transition(.opacity)
                 case .failure:
                     errorPlaceholder
@@ -61,11 +58,9 @@ struct LaunchImageView: View {
         )
     }
     
-    private var loadingPlaceholder: some View {
-        ShimmerView(
-            width: UIScreen.main.bounds.width,
-            height: height
-        )
+    /// Now accepts the available width from the geometry for a responsive shimmer.
+    private func loadingPlaceholder(width: CGFloat) -> some View {
+        ShimmerView(width: width, height: height)
     }
     
     private var errorPlaceholder: some View {
@@ -79,6 +74,7 @@ struct LaunchImageView: View {
     }
 }
 
+// MARK: - DetailItem
 
 /// Generic detail item component for displaying labeled information
 struct DetailItem: View {
@@ -129,6 +125,8 @@ struct DetailItem: View {
     }
 }
 
+// MARK: - ContentDivider
+
 /// Shared content divider with consistent styling
 struct ContentDivider: View {
     var body: some View {
@@ -137,6 +135,8 @@ struct ContentDivider: View {
     }
 }
 
+// MARK: - ExpandableText
+
 /// Expandable text section with show more/less functionality
 struct ExpandableText: View {
     let text: String
@@ -144,8 +144,13 @@ struct ExpandableText: View {
     @Binding var isExpanded: Bool
     var lineLimit: Int = 2
     
+    // Optimization: Compute limited height based on an estimated line height.
+    private let estimatedLineHeight: CGFloat = 20
+    private var computedLimitedHeight: CGFloat {
+        CGFloat(lineLimit) * estimatedLineHeight
+    }
+    
     @State private var textHeight: CGFloat = 0
-    @State private var limitedHeight: CGFloat = 0
     @State private var hasOverflow: Bool = false
     
     var body: some View {
@@ -187,7 +192,7 @@ struct ExpandableText: View {
                 )
                 .onPreferenceChange(HeightPreferenceKey.self) { height in
                     textHeight = height
-                    hasOverflow = textHeight > limitedHeight
+                    hasOverflow = textHeight > computedLimitedHeight
                 }
         }
     }
@@ -200,6 +205,7 @@ private struct HeightPreferenceKey: PreferenceKey {
     }
 }
 
+// MARK: - ShimmerView
 
 /// Animated shimmer effect for loading states
 struct ShimmerView: View {
@@ -217,7 +223,7 @@ struct ShimmerView: View {
     ])
     
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             LinearGradient(
                 gradient: gradient,
                 startPoint: .leading,

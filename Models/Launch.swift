@@ -50,24 +50,22 @@ struct Launch: Identifiable, Codable, Sendable {
 
 // Extension to map SpaceDevsLaunch to Launch
 extension SpaceDevsLaunch {
-    func toAppLaunch(withEnrichment enrichment: LaunchEnrichment? = nil) -> Launch {
+    /// Maps the API model to your app’s Launch model.
+    /// Returns nil if the launch date is not in the future.
+    func toAppLaunch(withEnrichment enrichment: LaunchEnrichment? = nil) -> Launch? {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime]
-        let launchDate = dateFormatter.date(from: net) ?? Date()
+        guard let launchDate = dateFormatter.date(from: net),
+              launchDate > Date() else {
+            // Exclude non-upcoming launches for now.
+            return nil
+        }
         
-        let mappedStatus: LaunchStatus = {
-            switch status.name.lowercased() {
-            case "go for launch": return .upcoming
-            case "in flight": return .launching
-            case "launch successful": return .successful
-            case "launch failure": return .failed
-            case "launch delayed": return .delayed
-            case "launch cancelled": return .cancelled
-            default: return .unknown
-            }
-        }()
+        // For now, all future launches are marked as upcoming.
+        let mappedStatus: LaunchStatus = .upcoming
         
-        let badges = determineBadges(mappedStatus: mappedStatus)
+        // Determine additional badges (e.g., notable) using your criteria.
+        let badges = determineBadges()
         
         return Launch(
             id: id,
@@ -87,34 +85,37 @@ extension SpaceDevsLaunch {
         )
     }
     
-    private func determineBadges(mappedStatus: LaunchStatus) -> [Badge] {
+    private func determineBadges() -> [Badge] {
         var badges: [Badge] = []
         
-        if mappedStatus == .launching {
-            badges.append(.live)
+        // For notable launches, check mission description and provider.
+        if let missionDescription = mission?.description?.lowercased() {
+            if missionDescription.contains("maiden") || missionDescription.contains("first") {
+                badges.append(.firstLaunch)
+            }
+            if missionDescription.contains("national security")
+                || missionDescription.contains("historic")
+                || missionDescription.contains("key mission")
+                || missionDescription.contains("flagship")
+                || missionDescription.contains("first in class")
+            {
+                badges.append(.notable)
+            }
         }
         
-        if self.rocket.configuration.name.lowercased().contains("exclusive") {
-            badges.append(.exclusive)
-        }
-        
-        if let missionDescription = mission?.description?.lowercased(),
-           missionDescription.contains("maiden") || missionDescription.contains("first") {
-            badges.append(.firstLaunch)
-        }
-        
-        if let missionDescription = mission?.description?.lowercased(),
-           missionDescription.contains("national security") {
-            badges.append(.notable)
+        // Mark high-profile provider launches as notable.
+        let providerName = launch_service_provider.name.lowercased()
+        if providerName.contains("nasa") || providerName.contains("spacex") {
+            if !badges.contains(.notable) {
+                badges.append(.notable)
+            }
         }
         
         return badges
     }
     
     private func buildTwitterURL() -> String? {
-        guard let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-            return nil
-        }
+        guard let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return nil }
         return "https://twitter.com/search?q=\(encodedName)"
     }
 }

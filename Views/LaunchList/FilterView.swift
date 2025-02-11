@@ -1,29 +1,37 @@
-// Views/LaunchList/FilterView.swift
-
 import SwiftUI
 
 struct FilterView: View {
     @Binding var criteria: LaunchCriteria
     @Environment(\.dismiss) var dismiss
-    
-    @State private var selectedStatus: LaunchStatus?
+
+    // Optimized: Using an optional LaunchStatus with a default value of nil
+    // to represent "Any" status.
+    @State private var selectedStatus: LaunchStatus? = nil
     @State private var selectedProvider: String = ""
     @State private var selectedRocketName: String = ""
     @State private var startDate: Date = Date()
     @State private var endDate: Date = Date()
     @State private var filterLocation: String = ""
     
+    // Optimization: Dynamically generate the status options.
+    // Ensure that LaunchStatus conforms to CaseIterable.
+    private var statusOptions: [LaunchStatus?] {
+        // The nil option represents "Any" status.
+        [nil] + LaunchStatus.allCases
+    }
+
     var body: some View {
         Form {
             Picker("Status", selection: $selectedStatus) {
-                Text("Any").tag(nil as LaunchStatus?)
-                Text("Upcoming").tag(LaunchStatus.upcoming as LaunchStatus?)
-                Text("Launching").tag(LaunchStatus.launching as LaunchStatus?)
-                Text("Successful").tag(LaunchStatus.successful as LaunchStatus?)
-                Text("Failed").tag(LaunchStatus.failed as LaunchStatus?)
-                Text("Delayed").tag(LaunchStatus.delayed as LaunchStatus?)
-                Text("Cancelled").tag(LaunchStatus.cancelled as LaunchStatus?)
-                Text("Unknown").tag(LaunchStatus.unknown as LaunchStatus?) // Added Unknown option
+                ForEach(statusOptions, id: \.self) { status in
+                    if let status = status {
+                        Text(status.displayText)
+                            .tag(status as LaunchStatus?)
+                    } else {
+                        Text("Any")
+                            .tag(nil as LaunchStatus?)
+                    }
+                }
             }
             
             TextField("Provider", text: $selectedProvider)
@@ -45,8 +53,8 @@ struct FilterView: View {
     }
     
     private func applyFilters() {
-        // Ensure that startDate is before endDate
-        let dateRange = startDate <= endDate ? startDate...endDate : endDate...startDate
+        // Optimization: Ensure the date range is in the proper order.
+        let dateRange: ClosedRange<Date> = startDate <= endDate ? startDate...endDate : endDate...startDate
         
         criteria = LaunchCriteria(
             status: selectedStatus,

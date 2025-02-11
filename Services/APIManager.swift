@@ -7,7 +7,7 @@ actor APIManager: Sendable {
     static let shared = APIManager()
     
     // MARK: - Constants
-    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=10&offset=0"
+    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=20&offset=0"
     private let maxRetries = 3
     private let initialRetryDelay: UInt64 = 500_000_000 // 0.5 seconds
     private let timeoutInterval: TimeInterval = 15
@@ -140,7 +140,10 @@ actor APIManager: Sendable {
         try await withThrowingTaskGroup(of: Launch?.self) { group in
             for spaceDevsLaunch in spaceDevsLaunches {
                 group.addTask {
-                    var launch = spaceDevsLaunch.toAppLaunch(withEnrichment: nil)
+                    // Safely unwrap the optional launch.
+                    guard var launch = spaceDevsLaunch.toAppLaunch(withEnrichment: nil) else {
+                        return nil
+                    }
                     
                     if let cachedEnrichment = await self.cache.getCachedEnrichment(for: launch.id) {
                         launch.shortDescription = cachedEnrichment.shortDescription

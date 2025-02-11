@@ -1,9 +1,6 @@
-// Views/Common/LaunchStatusTag.swift
-
-import SwiftUI
-import Foundation
-
 /// A SwiftUI view that displays a tag representing the launch status.
+
+import SwiftUICore
 struct LaunchStatusTag: View {
     let status: LaunchStatus
 
@@ -12,21 +9,8 @@ struct LaunchStatusTag: View {
             .font(.caption2)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(statusColor)
+            .background(status.color) // Uses the computed property from LaunchStatus
             .foregroundColor(.white)
             .cornerRadius(8)
-    }
-    
-    /// Determines the color based on the launch status.
-    private var statusColor: Color {
-        status.color // Utilize the color property from LaunchStatus
-    }
-}
-
-// Preview for SwiftUI Canvas
-struct LaunchStatusTag_Previews: PreviewProvider {
-    static var previews: some View {
-        LaunchStatusTag(status: LaunchStatus.upcoming)
-            .padding()
     }
 }

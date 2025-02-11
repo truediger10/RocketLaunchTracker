@@ -1,4 +1,7 @@
+import SwiftUICore
 import SwiftUI
+
+// MARK: - ErrorView
 
 /// Displays error state with retry functionality
 struct ErrorView: View {
@@ -14,7 +17,6 @@ struct ErrorView: View {
         static let buttonHorizontalPadding: CGFloat = 60
         static let cornerRadius: CGFloat = 20
         static let buttonCornerRadius: CGFloat = 10
-        // Removed shadow-related constants
     }
     
     // MARK: - Body
@@ -27,10 +29,9 @@ struct ErrorView: View {
         .padding()
         .background(
             ThemeColors.darkGray
-                .opacity(0.9) // Using direct opacity value
+                .opacity(0.9)
         )
         .cornerRadius(Constants.cornerRadius)
-        // Removed shadow modifier
         .padding()
     }
     
@@ -63,28 +64,5 @@ struct ErrorView: View {
                 .padding(.horizontal, Constants.buttonHorizontalPadding)
         }
         .accessibilityHint("Tap to try again")
-    }
-}
-
-// MARK: - Preview Provider
-struct ErrorView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            ErrorView(
-                error: "Unable to load launch data",
-                retry: {}
-            )
-            .preferredColorScheme(.dark)
-            
-            ErrorView(
-                error: "Network connection lost",
-                retry: {}
-            )
-            .environment(\.sizeCategory, .accessibilityLarge)
-            .preferredColorScheme(.dark)
-        }
-        .previewLayout(.sizeThatFits)
-        .padding()
-        .background(ThemeColors.spaceBlack)
     }
 }
