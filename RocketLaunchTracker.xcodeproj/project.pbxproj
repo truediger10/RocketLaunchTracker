@@ -56,19 +56,19 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		753643962D5B0B340034E214 /* Exceptions for "RocketLaunchTracker" folder in "RocketLaunchTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 75E8BF0A2CF2F45B00A40CB1 /* RocketLaunchTracker */;
+		};
 		7549991A2D0A194200B05E4C /* Exceptions for "RocketLaunchTrackerShare" folder in "RocketLaunchTrackerShare" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 7549990B2D0A194200B05E4C /* RocketLaunchTrackerShare */;
-		};
-		75B471852D076A5400193BAF /* Exceptions for "RocketLaunchTracker" folder in "RocketLaunchTracker" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 75E8BF0A2CF2F45B00A40CB1 /* RocketLaunchTracker */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -84,7 +84,7 @@
 		75E8BF0D2CF2F45B00A40CB1 /* RocketLaunchTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				75B471852D076A5400193BAF /* Exceptions for "RocketLaunchTracker" folder in "RocketLaunchTracker" target */,
+				753643962D5B0B340034E214 /* Exceptions for "RocketLaunchTracker" folder in "RocketLaunchTracker" target */,
 			);
 			path = RocketLaunchTracker;
 			sourceTree = "<group>";
@@ -595,7 +595,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = RocketLaunchTracker/RocketLaunchTracker.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"RocketLaunchTracker/Preview Content\"";
@@ -635,7 +635,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = RocketLaunchTracker/RocketLaunchTracker.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"RocketLaunchTracker/Preview Content\"";

@@ -57,15 +57,3 @@ struct TweetButtonView: View {
     }
 }
 
-struct TweetButtonView_Previews: PreviewProvider {
-    static var previews: some View {
-        TweetButtonView(
-            text: "Check out this amazing rocket launch!",
-            url: URL(string: "https://example.com/launch"),
-            hashtags: "RocketLaunch,Space",
-            via: "YourTwitterHandle"
-        )
-        .padding()
-        .previewLayout(.sizeThatFits)
-    }
-}

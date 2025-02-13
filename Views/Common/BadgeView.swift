@@ -39,10 +39,3 @@ struct BadgeView: View {
     }
 }
 
-// Preview for SwiftUI Canvas
-struct BadgeView_Previews: PreviewProvider {
-    static var previews: some View {
-        BadgeView(badge: .live)
-            .padding()
-    }
-}

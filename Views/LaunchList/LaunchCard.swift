@@ -1,165 +1,85 @@
+//
+//  LaunchCard.swift
+//  RocketLaunchTracker
+//
+
 import SwiftUI
 
 struct LaunchCard: View {
     let launch: Launch
     
-    // MARK: - Constants
-    private enum Constants {
-        static let imageHeight: CGFloat = 180
-        static let cornerRadius: CGFloat = 12
-        static let padding: CGFloat = 16
-        static let spacing: CGFloat = 8
-        static let descriptionLineLimit = 2
-        // Removed shadow-related constants if any
-    }
-    
-    // MARK: - State
-    @State private var showFullDescription = false
-    @State private var isShareSheetPresented = false
+    @State private var showShareSheet = false
     @State private var imageLoaded = false
-    
-    // MARK: - Body
+
+    private enum Constants {
+        static let imageHeight: CGFloat = 160
+        static let cornerRadius: CGFloat = 16
+        static let padding: CGFloat = 12
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             imageSection
             contentSection
         }
         .background(ThemeColors.spaceBlack)
-        .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: Constants.cornerRadius)
-                .stroke(ThemeColors.darkGray.opacity(0.5), lineWidth: 1)
-        )
-        // Removed shadow modifier
-        .sheet(isPresented: $isShareSheetPresented) {
+        .cornerRadius(Constants.cornerRadius)
+        .shadow(color: ThemeColors.darkGray.opacity(0.6), radius: 4, x: 0, y: 2)
+        .padding(.horizontal, Constants.padding)
+        .sheet(isPresented: $showShareSheet) {
             ShareSheet(activityItems: shareContent)
         }
     }
-    
-    struct BadgesSection: View {
-        let badges: [Badge]
-        
-        var body: some View {
-            HStack(spacing: 8) {
-                ForEach(badges, id: \.self) { badge in
-                    Text(badge.displayText)
-                        .font(.caption)
-                        .padding(8)
-                        .background(ThemeColors.darkGray)
-                        .foregroundColor(ThemeColors.almostWhite)
-                        .clipShape(Capsule())
-                }
-            }
-        }
-    }
-    
-    // MARK: - Image Section
+
     private var imageSection: some View {
-        ZStack(alignment: .topLeading) {
-            LaunchImageView(
-                imageURL: launch.imageURL,
-                height: Constants.imageHeight
-            ) {
+        ZStack(alignment: .topTrailing) {
+            LaunchImageView(imageURL: launch.imageURL, height: Constants.imageHeight) {
                 withAnimation(.easeOut(duration: 0.3)) {
                     imageLoaded = true
                 }
             }
-            
-            overlayContent
-        }
-    }
-    
-    private var overlayContent: some View {
-        VStack(alignment: .leading) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(launch.provider)
-                        .font(.headline)
-                        .foregroundColor(ThemeColors.brightYellow)
-                    
-                    LaunchStatusTag(status: launch.status)
-                }
-                
-                Spacer()
-                
-                shareButton
+            // Share button in the top right corner
+            Button(action: { showShareSheet = true }) {
+                Image(systemName: "square.and.arrow.up")
+                    .foregroundColor(.white)
+                    .padding(8)
+                    .background(ThemeColors.darkGray.opacity(0.7))
+                    .clipShape(Circle())
             }
             .padding(Constants.padding)
-            
-            Spacer()
         }
     }
-    
-    private var shareButton: some View {
-        Button(action: { isShareSheetPresented = true }) {
-            Image(systemName: "square.and.arrow.up")
-                .foregroundColor(.white)
-                .font(.system(size: 16))
-                .padding(8)
-                .background(ThemeColors.spaceBlack.opacity(0.3))
-                .cornerRadius(8)
-        }
-    }
-    
-    // MARK: - Content Section
+
     private var contentSection: some View {
-        VStack(alignment: .leading, spacing: Constants.spacing) {
-            titleSection
-            ContentDivider()
+        VStack(alignment: .leading, spacing: 8) {
+            Text(launch.name)
+                .font(.headline)
+                .foregroundColor(ThemeColors.almostWhite)
+                .lineLimit(2)
             
-            detailsSection
-            ContentDivider()
+            Text(launch.provider)
+                .font(.subheadline)
+                .foregroundColor(ThemeColors.brightYellow)
             
-            ExpandableText(
-                text: launch.shortDescription ?? "No description available",
-                title: "Mission Overview",
-                isExpanded: $showFullDescription,
-                lineLimit: Constants.descriptionLineLimit
-            )
+            LaunchStatusTag(status: launch.status)
             
-            // Only display real badges if available
-            if let badges = launch.badges {
-                BadgesSection(badges: badges)
+            HStack(spacing: 16) {
+                DetailItem(label: "Date", value: launch.formattedDate, icon: "calendar")
+                DetailItem(label: "Location", value: launch.location, icon: "mappin.and.ellipse")
             }
+            
+            Text("Time: \(launch.timeUntilLaunch)")
+                .font(.footnote)
+                .foregroundColor(ThemeColors.lightGray)
         }
         .padding(Constants.padding)
     }
-    
-    private var titleSection: some View {
-        Text(launch.name)
-            .font(.title3.bold())
-            .foregroundColor(ThemeColors.almostWhite)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-    
-    private var detailsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            DetailItem(
-                label: "Launch Date",
-                value: launch.formattedDate,
-                icon: "calendar"
-            )
-            
-            DetailItem(
-                label: "Location",
-                value: launch.location,
-                icon: "mappin.circle"
-            )
-            
-            DetailItem(
-                label: "Time Until Launch",
-                value: launch.timeUntilLaunch,
-                icon: "timer"
-            )
-        }
-    }
-    
-    // MARK: - Helper Properties
+
     private var shareContent: [Any] {
         var items: [Any] = [
-            "\(launch.name)\nLaunch Date: \(launch.formattedDate)\nProvider: \(launch.provider)"
+            "\(launch.name)\nDate: \(launch.formattedDate)\nProvider: \(launch.provider)"
         ]
-        if let imageURL = launch.imageURL, let url = URL(string: imageURL) {
+        if let urlString = launch.imageURL, let url = URL(string: urlString) {
             items.append(url)
         }
         return items
