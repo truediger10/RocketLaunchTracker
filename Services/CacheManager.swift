@@ -2,11 +2,8 @@
 //  CacheManager.swift
 //  RocketLaunchTracker
 //
-
 import Foundation
 
-/// Manages caching of launch enrichments to optimize performance and reduce redundant API calls.
-/// Converted to an `actor` for safe concurrent access of mutable properties.
 actor CacheManager: Sendable {
     static let shared = CacheManager()
     
@@ -15,8 +12,8 @@ actor CacheManager: Sendable {
     private let encoder: JSONEncoder
     private let cacheDirectory: URL
     
-    private var memoryEnrichments: [String: LaunchEnrichment] = [:]
     private var memoryLaunches: [Launch] = []
+    private var memoryEnrichments: [String: LaunchEnrichment] = [:]
     
     private init() {
         self.fileManager = .default
@@ -27,7 +24,7 @@ actor CacheManager: Sendable {
         self.cacheDirectory = cachesDirectory.appendingPathComponent("RocketLaunchTrackerCache")
         try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         
-        print("CacheManager initialized at directory: \(cacheDirectory.path)")
+        print("CacheManager initialized at: \(cacheDirectory.path)")
     }
     
     // MARK: - Launch Caching
@@ -40,7 +37,7 @@ actor CacheManager: Sendable {
             memoryLaunches = launches
             print("Successfully cached \(launches.count) launches")
         } catch {
-            print("Failed to cache launches with error: \(error)")
+            print("Failed to cache launches: \(error)")
         }
     }
     
@@ -49,13 +46,15 @@ actor CacheManager: Sendable {
             return memoryLaunches
         }
         let fileURL = cacheDirectory.appendingPathComponent("launches.cache")
+        guard fileManager.fileExists(atPath: fileURL.path) else { return nil }
+        
         do {
             let data = try Data(contentsOf: fileURL)
-            let launches = try decoder.decode([Launch].self, from: data)
-            memoryLaunches = launches
-            return launches
+            let decoded = try decoder.decode([Launch].self, from: data)
+            memoryLaunches = decoded
+            return decoded
         } catch {
-            print("Failed to load cached launches with error: \(error)")
+            print("Failed to load cached launches: \(error)")
             return nil
         }
     }
@@ -63,41 +62,32 @@ actor CacheManager: Sendable {
     // MARK: - Enrichment Caching
     
     func getCachedEnrichment(for id: String) async -> LaunchEnrichment? {
-        print("Attempting to retrieve cached enrichment for launch ID: \(id)")
-        if let enrichment = memoryEnrichments[id] {
-            print("Retrieved enrichment from in-memory cache for launch ID: \(id)")
-            return enrichment
+        if let cached = memoryEnrichments[id] {
+            return cached
         }
         let fileURL = cacheDirectory.appendingPathComponent("enrichment_\(id).cache")
+        guard fileManager.fileExists(atPath: fileURL.path) else { return nil }
+        
         do {
             let data = try Data(contentsOf: fileURL)
-            let cached = try decoder.decode(LaunchEnrichment.self, from: data)
-            memoryEnrichments[id] = cached
-            print("Loaded enrichment from disk cache for launch ID: \(id)")
-            return cached
+            let enrichment = try decoder.decode(LaunchEnrichment.self, from: data)
+            memoryEnrichments[id] = enrichment
+            return enrichment
         } catch {
-            print("Failed to load cached enrichment for launch ID \(id) with error: \(error)")
+            print("Failed to load enrichment for \(id): \(error)")
             return nil
         }
     }
     
     func cacheEnrichment(_ enrichment: LaunchEnrichment, for id: String) async {
-        print("Caching enrichment for launch ID: \(id)")
         let fileURL = cacheDirectory.appendingPathComponent("enrichment_\(id).cache")
         do {
             let data = try encoder.encode(enrichment)
             try data.write(to: fileURL, options: .atomicWrite)
             memoryEnrichments[id] = enrichment
-            print("Successfully cached enrichment to disk and memory for launch ID: \(id)")
+            print("Cached enrichment for \(id)")
         } catch {
-            print("Failed to cache enrichment for launch ID \(id) with error: \(error)")
+            print("Failed to cache enrichment for \(id): \(error)")
         }
-    }
-    
-    func updateLaunch(_ launch: Launch) async {
-        if let index = memoryLaunches.firstIndex(where: { $0.id == launch.id }) {
-            memoryLaunches[index] = launch
-        }
-        await cacheLaunches(memoryLaunches)
     }
 }

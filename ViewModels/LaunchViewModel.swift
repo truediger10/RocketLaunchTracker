@@ -2,114 +2,126 @@
 //  LaunchViewModel.swift
 //  RocketLaunchTracker
 //
-
+//  SwiftUI ViewModel that calls LaunchService for data/pagination
+//
 import Foundation
 import SwiftUI
 
 @MainActor
 class LaunchViewModel: ObservableObject {
     enum ViewState {
-        case idle, loading, loaded, error(String)
+        case idle
+        case loading
+        case loaded
+        case error(String)
     }
     
-    // MARK: - Published Properties
     @Published private(set) var launches: [Launch] = []
     @Published private(set) var isLoading = false
     @Published var errorMessage: String?
     @Published var viewState: ViewState = .idle
     @Published private(set) var hasMoreLaunches = true
+    @Published var searchText: String = ""
     
-    // MARK: - Private Properties
-    private let apiManager: APIManager
+    private let service: LaunchServiceProtocol
     
-    // MARK: - Initialization
-    init(apiManager: APIManager = .shared) {
-        self.apiManager = apiManager
+    init(service: LaunchServiceProtocol = LaunchService.shared) {
+        self.service = service
         print("LaunchViewModel initialized")
     }
     
-    // MARK: - Public Methods
-    
-    /// Fetch the initial set of launches or perform an incremental update.
-    /// - Note: If launches already exist, new/updated launches are merged into the existing list.
+    /// Loads the first page of launches, or uses cached data if present & unexpired
     func fetchLaunches() async {
-        guard !isLoading else {
-            print("fetchLaunches() called but already loading")
-            return
-        }
+        guard !isLoading else { return }
         
         isLoading = true
         viewState = .loading
         errorMessage = nil
         
-        print("Starting fetchLaunches()")
         do {
-            let fetchedLaunches = try await apiManager.fetchLaunches()
-            
-            if launches.isEmpty {
-                // Initial full load.
-                print("Initial load: Fetched \(fetchedLaunches.count) launches")
-                launches = fetchedLaunches
-            } else {
-                // Incremental update: merge new or updated launches.
-                print("Incremental update: Fetched \(fetchedLaunches.count) launches")
-                for updatedLaunch in fetchedLaunches {
-                    if let index = launches.firstIndex(where: { $0.id == updatedLaunch.id }) {
-                        launches[index] = updatedLaunch
-                    } else {
-                        // Insert new launches at the top.
-                        launches.insert(updatedLaunch, at: 0)
-                    }
-                }
-            }
-            
-            viewState = .loaded
-            hasMoreLaunches = true
+            let data = try await service.getLaunches()
+            self.launches = data
+            self.viewState = .loaded
+            self.hasMoreLaunches = true  // We assume more pages might be available
         } catch {
-            print("Unexpected error fetching launches: \(error)")
-            errorMessage = error.localizedDescription
-            launches = []
-            viewState = .error(errorMessage ?? "Unknown error")
-            hasMoreLaunches = false
+            self.errorMessage = error.localizedDescription
+            self.launches = []
+            self.viewState = .error(errorMessage ?? "Unknown error")
+            self.hasMoreLaunches = false
         }
         
         isLoading = false
-        print("Completed fetchLaunches()")
     }
     
-    /// Fetch the next page of launches (infinite scrolling).
+    /// Loads the next page of data (infinite scroll, load-more button, etc.)
     func fetchMoreLaunches() async {
-        guard !isLoading && hasMoreLaunches else {
-            print("fetchMoreLaunches() called but already loading or no more launches")
-            return
-        }
+        guard !isLoading && hasMoreLaunches else { return }
         
         isLoading = true
         viewState = .loading
-        print("Starting fetchMoreLaunches()")
         
         do {
-            if let moreLaunches = try await apiManager.fetchMoreLaunches() {
-                print("Fetched \(moreLaunches.count) more launches")
-                // Remove duplicates before appending.
-                let newLaunches = moreLaunches.filter { newLaunch in
-                    !launches.contains { $0.id == newLaunch.id }
-                }
-                launches.append(contentsOf: newLaunches)
-                hasMoreLaunches = !newLaunches.isEmpty
+            let newItems = try await service.getMoreLaunches()
+            if newItems.isEmpty {
+                // No further pages
+                self.hasMoreLaunches = false
             } else {
-                print("No additional launches to fetch")
-                hasMoreLaunches = false
+                // Combine & remove duplicates
+                let combined = (launches + newItems).uniqued { $0.id }
+                self.launches = combined
             }
-            viewState = .loaded
+            self.viewState = .loaded
         } catch {
-            print("Unexpected error fetching more launches: \(error)")
-            errorMessage = error.localizedDescription
-            viewState = .error(errorMessage ?? "Unknown error")
-            hasMoreLaunches = false
+            self.errorMessage = error.localizedDescription
+            self.viewState = .error(errorMessage ?? "Unknown error")
+            self.hasMoreLaunches = false
         }
         
         isLoading = false
-        print("Completed fetchMoreLaunches()")
+    }
+}
+
+extension LaunchViewModel {
+    /// Returns launches filtered by the search text.
+    var filteredLaunches: [Launch] {
+        let trimmedQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else { return launches }
+        
+        let query = trimmedQuery.lowercased()
+        return launches.filter { launch in
+            return launch.name.lowercased().contains(query) ||
+                   launch.rocketName.lowercased().contains(query) ||
+                   launch.provider.lowercased().contains(query) ||
+                   launch.location.lowercased().contains(query)
+        }
+    }
+}
+
+extension LaunchViewModel {
+    var suggestions: [String] {
+        // If user hasn't typed anything, no suggestions
+        guard !searchText.isEmpty else { return [] }
+        
+        // Example: gather rocketName & provider as suggestions
+        // You can add name, shortDescription, etc. as well—whatever you want to suggest
+        let rocketNames = launches.map(\.rocketName)
+        let providers = launches.map(\.provider)
+        
+        // Combine them, remove duplicates
+        let allSuggestions = Set(rocketNames + providers)
+        
+        // Filter to only those matching the current query
+        let query = searchText.lowercased()
+        let filtered = allSuggestions.filter { $0.lowercased().contains(query) }
+        
+        // Possibly limit how many you return
+        return Array(filtered.prefix(8)) // e.g. first 8 matches
+    }
+}
+
+extension Array {
+    func uniqued<T: Hashable>(by keyPath: (Element) -> T) -> [Element] {
+        var seen = Set<T>()
+        return filter { seen.insert(keyPath($0)).inserted }
     }
 }

@@ -1,4 +1,7 @@
-// Views/Common/BadgeView.swift
+//
+//  BadgeView.swift
+//  RocketLaunchTracker
+//
 
 import SwiftUI
 import Foundation // Replace with your actual module name where Badge is defined
@@ -38,4 +41,3 @@ struct BadgeView: View {
         }
     }
 }
-

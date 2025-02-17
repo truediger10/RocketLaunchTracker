@@ -1,6 +1,8 @@
+// File: SharedComponents.swift – Location: Views/Common
 import SwiftUI
 
 /// Shared launch image view with consistent loading and error states
+/// Minor tweaks applied for better consistency with card/list/detail views.
 struct LaunchImageView: View {
     let imageURL: String?
     let height: CGFloat
@@ -8,6 +10,8 @@ struct LaunchImageView: View {
     
     // MARK: - Constants
     private enum Constants {
+        // Updated cornerRadius to match LaunchCard’s 16 for consistency.
+        static let cornerRadius: CGFloat = 16
         static let gradientColors: [Color] = [
             .clear,
             ThemeColors.spaceBlack.opacity(0.3),
@@ -15,8 +19,7 @@ struct LaunchImageView: View {
             ThemeColors.spaceBlack
         ]
         static let errorIconSize: CGFloat = 60
-        static let aspectRatio: CGFloat = 16/9
-        static let cornerRadius: CGFloat = 12
+        static let aspectRatio: CGFloat = 16 / 9
     }
     
     var body: some View {
@@ -28,6 +31,7 @@ struct LaunchImageView: View {
         .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius))
     }
     
+    // MARK: - Main Image Content
     private var imageContent: some View {
         GeometryReader { geometry in
             AsyncImage(url: URL(string: imageURL ?? "")) { phase in
@@ -43,7 +47,7 @@ struct LaunchImageView: View {
                         .onAppear {
                             onImageLoaded?()
                         }
-                        .transition(.opacity)
+                        // Removed the explicit .transition(.opacity) animation
                 case .failure:
                     errorPlaceholder
                 @unknown default:
@@ -53,6 +57,7 @@ struct LaunchImageView: View {
         }
     }
     
+    // MARK: - Gradient Overlay
     private var gradientOverlay: some View {
         LinearGradient(
             gradient: Gradient(colors: Constants.gradientColors),
@@ -61,13 +66,17 @@ struct LaunchImageView: View {
         )
     }
     
+    // MARK: - Loading State Placeholder
     private var loadingPlaceholder: some View {
         ShimmerView(
             width: UIScreen.main.bounds.width,
-            height: height
+            height: height,
+            duration: 0.9,  // Slightly quicker shimmer for a minor improvement
+            angle: 20
         )
     }
     
+    // MARK: - Error State Placeholder
     private var errorPlaceholder: some View {
         Rectangle()
             .fill(ThemeColors.darkGray)
@@ -79,15 +88,15 @@ struct LaunchImageView: View {
     }
 }
 
-
+// MARK: - DetailItem
 /// Generic detail item component for displaying labeled information
+/// Ensured the fonts/spacing align with the card and detail designs.
 struct DetailItem: View {
     let label: String
     let value: String
     let icon: String?
     var iconColor: Color = ThemeColors.brightYellow
     
-    // MARK: - Constants
     private enum Constants {
         static let iconSize: CGFloat = 20
         static let spacing: CGFloat = 8
@@ -129,6 +138,7 @@ struct DetailItem: View {
     }
 }
 
+// MARK: - ContentDivider
 /// Shared content divider with consistent styling
 struct ContentDivider: View {
     var body: some View {
@@ -137,6 +147,7 @@ struct ContentDivider: View {
     }
 }
 
+// MARK: - ExpandableText
 /// Expandable text section with show more/less functionality
 struct ExpandableText: View {
     let text: String
@@ -148,8 +159,12 @@ struct ExpandableText: View {
     @State private var limitedHeight: CGFloat = 0
     @State private var hasOverflow: Bool = false
     
+    private enum LocalConstants {
+        static let spacing: CGFloat = 8
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: LocalConstants.spacing) {
             HStack {
                 Text(title)
                     .font(.headline)
@@ -200,8 +215,9 @@ private struct HeightPreferenceKey: PreferenceKey {
     }
 }
 
-
+// MARK: - ShimmerView
 /// Animated shimmer effect for loading states
+/// Minor tweaks to duration for smoother shimmer.
 struct ShimmerView: View {
     let width: CGFloat
     let height: CGFloat
@@ -217,7 +233,7 @@ struct ShimmerView: View {
     ])
     
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             LinearGradient(
                 gradient: gradient,
                 startPoint: .leading,

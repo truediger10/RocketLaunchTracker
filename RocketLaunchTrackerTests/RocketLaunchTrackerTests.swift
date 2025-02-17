@@ -1,47 +1,33 @@
-// RocketLaunchTrackerTests/RocketLaunchTrackerTests.swift
-
 import XCTest
 @testable import RocketLaunchTracker
 
 final class RocketLaunchTrackerTests: XCTestCase {
 
     func testSpaceDevsLaunchToLaunchMapping() throws {
-        // Given
+        // Given: A sample JSON response (list mode)
         let jsonData = """
         {
             "id": "launch123",
             "name": "Mission Alpha",
             "net": "2024-12-31T12:00:00Z",
             "status": {
-                "id": 1,
                 "name": "Go",
-                "abbrev": "GO",
-                "description": "Launch is ready to proceed."
+                "abbrev": "GO"
             },
             "launch_service_provider": {
-                "id": 101,
                 "name": "SpaceX"
             },
             "rocket": {
                 "configuration": {
-                    "name": "Falcon 9",
                     "full_name": "Falcon 9 Block 5"
                 }
             },
             "mission": {
-                "name": "Alpha Mission",
-                "description": "Test mission for new payload.",
-                "type": "Test",
-                "orbit": {
-                    "name": "LEO"
-                }
+                "description": "Test mission for new payload."
             },
             "pad": {
-                "name": "Launch Complex 39A",
-                "wiki_url": "https://en.wikipedia.org/wiki/Launch_Complex_39A",
-                "location": {
-                    "name": "Kennedy Space Center"
-                }
+                "location": "Kennedy Space Center",
+                "wiki_url": "https://en.wikipedia.org/wiki/Launch_Complex_39A"
             },
             "image": {
                 "image_url": "https://example.com/image.jpg"
@@ -52,14 +38,14 @@ final class RocketLaunchTrackerTests: XCTestCase {
         let decoder = JSONDecoder()
         let spaceDevsLaunch = try decoder.decode(SpaceDevsLaunch.self, from: jsonData)
         
-        // When
-        let launch = spaceDevsLaunch.toAppLaunch(withEnrichment: LaunchEnrichment(
+        // When: Mapping to our internal Launch model using an enrichment object.
+        let enrichment = LaunchEnrichment(
             shortDescription: "A test mission to deploy new payloads.",
-            detailedDescription: "Mission Alpha aims to test the deployment mechanisms of our new payload systems, ensuring reliability and efficiency for future missions.",
-            status: LaunchStatus(statusName: "Go", abbreviation: "GO")
-        ))
+            detailedDescription: "Mission Alpha aims to test the deployment mechanisms of our new payload systems, ensuring reliability and efficiency for future missions."
+        )
+        let launch = spaceDevsLaunch.toAppLaunch(withEnrichment: enrichment)
         
-        // Then
+        // Then: Verify that fields map correctly.
         XCTAssertEqual(launch.id, "launch123")
         XCTAssertEqual(launch.name, "Mission Alpha")
         XCTAssertEqual(launch.status.statusName, "Go")
@@ -70,9 +56,9 @@ final class RocketLaunchTrackerTests: XCTestCase {
         XCTAssertEqual(launch.imageURL, "https://example.com/image.jpg")
         XCTAssertEqual(launch.shortDescription, "A test mission to deploy new payloads.")
         XCTAssertEqual(launch.detailedDescription, "Mission Alpha aims to test the deployment mechanisms of our new payload systems, ensuring reliability and efficiency for future missions.")
-        XCTAssertEqual(launch.orbit, "LEO")
+        XCTAssertNil(launch.orbit) // No orbit data provided in JSON.
         XCTAssertEqual(launch.wikiURL, "https://en.wikipedia.org/wiki/Launch_Complex_39A")
-        XCTAssertNil(launch.twitterURL)
-        XCTAssertTrue(launch.badges.isEmpty)
+        XCTAssertEqual(launch.twitterURL, "https://twitter.com/search?q=Mission%20Alpha")
+        XCTAssertTrue(launch.badges?.isEmpty ?? true)
     }
 }

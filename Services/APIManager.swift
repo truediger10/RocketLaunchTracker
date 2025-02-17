@@ -2,52 +2,44 @@
 //  APIManager.swift
 //  RocketLaunchTracker
 //
-
+//  Bare-bones fetch from The Space Devs (no caching or enrichment).
+//  Handles pagination by storing nextURL from the response.
+//
 import Foundation
 
-/// Handles SpaceDevs API calls, caching, and enrichment.
 actor APIManager: Sendable {
     static let shared = APIManager()
     
     // MARK: - Configuration
-    private let baseURL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/"
+    private let baseURL = "https://ll.thespacedevs.com/2.3.0/launches/upcoming"
+    /// Use a small limit to force multiple pages if you want. e.g. 10 or 25
     private let limit = 50
-    private let mode = "list"
+    private let mode = "normal"
     private let maxRetries = 3
-    private let initialRetryDelay: UInt64 = 500_000_000 // 0.5 sec
+    private let initialRetryDelay: UInt64 = 500_000_000
     private let timeoutInterval: TimeInterval = 15
-    
-    /// Important: we must request these fields so we get the provider name
-    private let requiredFields = "id,name,net,status,launch_service_provider,rocket,mission,pad,image,status_name,rocket_name,agency_name,pad_name"
     
     // MARK: - Pagination
     private var nextURL: String? = nil
     
-    // MARK: - Dependencies
-    private let cache: CacheManager
-    private let openAIService: OpenAIService
+    // Dependencies
     private let urlSession: URLSession
     
-    // MARK: - Initialization
-    private init(cache: CacheManager = .shared,
-                 openAIService: OpenAIService = .shared,
-                 urlSession: URLSession = .shared) {
-        self.cache = cache
-        self.openAIService = openAIService
+    private init(urlSession: URLSession = .shared) {
         self.urlSession = urlSession
         print("APIManager initialized with baseURL: \(baseURL)")
     }
     
     // MARK: - Public Methods
     
+    /// Fetches the first page of upcoming launches
     func fetchLaunches() async throws -> [Launch] {
-        let urlString = "\(baseURL)?limit=\(limit)&mode=\(mode)&fields=\(requiredFields)"
-        let (launches, count) = try await fetchFromSpaceDevs(urlString: urlString)
-        await cache.cacheLaunches(launches)
-        print("Fetched \(launches.count) launches (Total count: \(count))")
+        let urlString = "\(baseURL)?limit=\(limit)&mode=\(mode)"
+        let (launches, _) = try await fetchFromSpaceDevs(urlString: urlString)
         return launches
     }
     
+    /// Fetches the next page, if available. Returns nil if no next page.
     func fetchMoreLaunches() async throws -> [Launch]? {
         guard let next = nextURL else {
             print("No more pages to fetch.")
@@ -58,7 +50,6 @@ actor APIManager: Sendable {
             nextURL = nil
             return nil
         }
-        await cache.cacheLaunches(launches)
         return launches
     }
     
@@ -71,6 +62,7 @@ actor APIManager: Sendable {
         
         var attempt = 1
         var delay = initialRetryDelay
+        
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
@@ -81,7 +73,9 @@ actor APIManager: Sendable {
                 request.timeoutInterval = timeoutInterval
                 request.setValue("application/json", forHTTPHeaderField: "Accept")
                 request.setValue("gzip", forHTTPHeaderField: "Accept-Encoding")
-                request.setValue("Token \(Config.shared.spaceDevsAPIKey)", forHTTPHeaderField: "Authorization")
+                
+                // If you have a token:
+                // request.setValue("Token <YOUR_API_TOKEN>", forHTTPHeaderField: "Authorization")
                 
                 let (data, response) = try await urlSession.data(for: request)
                 guard let httpResponse = response as? HTTPURLResponse else {
@@ -90,11 +84,15 @@ actor APIManager: Sendable {
                 
                 switch httpResponse.statusCode {
                 case 200...299:
-                    let decodedResponse = try decoder.decode(SpaceDevsResponse.self, from: data)
-                    self.nextURL = decodedResponse.next
-                    // Enrich launches concurrently
-                    let enrichedLaunches = try await enrichLaunchesConcurrently(decodedResponse.results)
-                    return (enrichedLaunches, decodedResponse.count)
+                    let decoded = try decoder.decode(SpaceDevsResponse.self, from: data)
+                    
+                    // Store next page
+                    self.nextURL = decoded.next
+                    
+                    // Map SpaceDevsLaunch → your Launch struct
+                    let mapped = decoded.results.compactMap { $0.toAppLaunch() }
+                    return (mapped, decoded.count)
+                    
                 case 429:
                     throw APIError.rateLimited
                 case 500...599:
@@ -102,6 +100,7 @@ actor APIManager: Sendable {
                 default:
                     throw APIError.serverError(code: httpResponse.statusCode)
                 }
+                
             } catch APIError.rateLimited {
                 if attempt < maxRetries {
                     try await Task.sleep(nanoseconds: delay)
@@ -112,48 +111,7 @@ actor APIManager: Sendable {
                 }
             }
         }
+        
         throw APIError.unknownError
-    }
-    
-    private func enrichLaunchesConcurrently(_ spaceDevsLaunches: [SpaceDevsLaunch]) async throws -> [Launch] {
-        try await withThrowingTaskGroup(of: Launch?.self) { group in
-            for spaceDevsLaunch in spaceDevsLaunches {
-                group.addTask {
-                    // Convert from SpaceDevsLaunch to your app’s Launch model
-                    var launch = spaceDevsLaunch.toAppLaunch()
-                    
-                    // Check if we already have an enrichment cached
-                    if let cached = await self.cache.getCachedEnrichment(for: launch.id) {
-                        launch.shortDescription = cached.shortDescription
-                        launch.detailedDescription = cached.detailedDescription
-                        launch.status = cached.status ?? launch.status
-                        return launch
-                    }
-                    
-                    // If not cached, try OpenAI enrichment
-                    do {
-                        let enrichment = try await self.openAIService.enrichLaunch(launch)
-                        await self.cache.cacheEnrichment(enrichment, for: launch.id)
-                        
-                        // Update launch with GPT-provided fields
-                        launch.shortDescription = enrichment.shortDescription
-                        launch.detailedDescription = enrichment.detailedDescription
-                        launch.status = enrichment.status ?? launch.status
-                        return launch
-                    } catch {
-                        // If enrichment fails, return launch without GPT data
-                        return launch
-                    }
-                }
-            }
-            
-            var finalLaunches: [Launch] = []
-            for try await enriched in group {
-                if let l = enriched {
-                    finalLaunches.append(l)
-                }
-            }
-            return finalLaunches
-        }
     }
 }

@@ -1,8 +1,3 @@
-//
-//  LaunchCard.swift
-//  RocketLaunchTracker
-//
-
 import SwiftUI
 
 struct LaunchCard: View {
@@ -15,6 +10,8 @@ struct LaunchCard: View {
         static let imageHeight: CGFloat = 160
         static let cornerRadius: CGFloat = 16
         static let padding: CGFloat = 12
+        static let verticalSpacing: CGFloat = 8
+        static let detailSpacing: CGFloat = 12
     }
 
     var body: some View {
@@ -31,14 +28,16 @@ struct LaunchCard: View {
         }
     }
 
+    // MARK: - Image Section
     private var imageSection: some View {
         ZStack(alignment: .topTrailing) {
             LaunchImageView(imageURL: launch.imageURL, height: Constants.imageHeight) {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    imageLoaded = true
-                }
+                // Removed or replaced the short fade animation with a simpler approach
+                imageLoaded = true
             }
-            // Share button in the top right corner
+            
+            
+            // Share button in the top-right corner
             Button(action: { showShareSheet = true }) {
                 Image(systemName: "square.and.arrow.up")
                     .foregroundColor(.white)
@@ -50,31 +49,39 @@ struct LaunchCard: View {
         }
     }
 
+    // MARK: - Content Section
     private var contentSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(launch.name)
-                .font(.headline)
-                .foregroundColor(ThemeColors.almostWhite)
-                .lineLimit(2)
-            
+        VStack(alignment: .leading, spacing: Constants.verticalSpacing) {
+            // Provider (e.g., "SpaceX")
             Text(launch.provider)
                 .font(.subheadline)
                 .foregroundColor(ThemeColors.brightYellow)
             
-            LaunchStatusTag(status: launch.status)
+            // Mission Name by itself
+            Text(launch.name)  // e.g. "Starlink Group 12-8"
+                .font(.headline)
+                .foregroundColor(ThemeColors.almostWhite)
+                .lineLimit(2)
             
-            HStack(spacing: 16) {
+            // Status Tag - commented out as requested
+            // LaunchStatusTag(status: launch.status)
+            // Card details: Rocket, Date, Location, Time
+            VStack(alignment: .leading, spacing: Constants.detailSpacing) {
+                // If your model has rocketName = "Falcon 9 Block 5"
+                DetailItem(label: "Rocket", value: launch.rocketName, icon: "paperplane.fill")
+                
                 DetailItem(label: "Date", value: launch.formattedDate, icon: "calendar")
                 DetailItem(label: "Location", value: launch.location, icon: "mappin.and.ellipse")
+                
+                Text("Time: \(launch.timeUntilLaunch)")
+                    .font(.footnote)
+                    .foregroundColor(ThemeColors.lightGray)
             }
-            
-            Text("Time: \(launch.timeUntilLaunch)")
-                .font(.footnote)
-                .foregroundColor(ThemeColors.lightGray)
         }
         .padding(Constants.padding)
     }
 
+    // MARK: - Sharing Content
     private var shareContent: [Any] {
         var items: [Any] = [
             "\(launch.name)\nDate: \(launch.formattedDate)\nProvider: \(launch.provider)"

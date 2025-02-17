@@ -1,6 +1,10 @@
+// File: ErrorView.swift – Location: Views/Common
 import SwiftUI
 
 /// Displays error state with retry functionality
+/// Minor improvements:
+/// - Optional fade animation when error appears
+/// - You can customize durations or transitions
 struct ErrorView: View {
     // MARK: - Properties
     let error: String
@@ -14,7 +18,6 @@ struct ErrorView: View {
         static let buttonHorizontalPadding: CGFloat = 60
         static let cornerRadius: CGFloat = 20
         static let buttonCornerRadius: CGFloat = 10
-        // Removed shadow-related constants
     }
     
     // MARK: - Body
@@ -25,13 +28,12 @@ struct ErrorView: View {
             retryButton
         }
         .padding()
-        .background(
-            ThemeColors.darkGray
-                .opacity(0.9) // Using direct opacity value
-        )
+        .background(ThemeColors.darkGray.opacity(0.9))
         .cornerRadius(Constants.cornerRadius)
-        // Removed shadow modifier
         .padding()
+        /// Fade in if you want a smoother appearance
+        .transition(.opacity.combined(with: .scale))
+        .animation(.easeIn(duration: 0.2), value: error)  // or .default
     }
     
     // MARK: - Subviews
@@ -66,7 +68,7 @@ struct ErrorView: View {
     }
 }
 
-// MARK: - Preview Provider
+// MARK: - Preview
 struct ErrorView_Previews: PreviewProvider {
     static var previews: some View {
         Group {

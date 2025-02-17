@@ -2,10 +2,12 @@
 //  APIModels.swift
 //  RocketLaunchTracker
 //
-
+//  Decodes data from The Space Devs Launch Library 2 API
+//  and maps them to your local Launch model if needed.
+//
 import Foundation
 
-// MARK: - SpaceDevs API Response
+// MARK: - API Response
 struct SpaceDevsResponse: Codable {
     let count: Int
     let next: String?
@@ -13,200 +15,170 @@ struct SpaceDevsResponse: Codable {
     let results: [SpaceDevsLaunch]
 }
 
-// MARK: - Launch Status
-struct APILaunchStatus: Codable {
-    let id: Int
+// MARK: - SpaceDevsLaunch Model
+struct SpaceDevsLaunch: Codable {
+    let id: String
     let name: String
-    let abbrev: String
-    let description: String
+    let net: String  // The API returns an ISO8601 date string for the planned launch time.
+    
+    let status: LaunchStatusWrapper
+    let image: ImageWrapper?
+    let rocket: RocketWrapper?
+    let launch_service_provider: ProviderWrapper?
+    let pad: PadWrapper?
+    let mission: MissionWrapper?
+    let orbit: OrbitWrapper?
 }
 
-// MARK: - Launch Service Provider
-struct LaunchServiceProvider: Codable {
-    let id: Int
+// Example sub-wrappers:
+struct LaunchStatusWrapper: Codable {
     let name: String
-    let type: LaunchProviderType?
-
-    enum LaunchProviderType: Codable {
-        case government
-        case commercial
-        case unknown
-
-        init(from decoder: Decoder) throws {
-            let container = try decoder.singleValueContainer()
-            if let typeString = try? container.decode(String.self) {
-                switch typeString.lowercased() {
-                case "government": self = .government
-                case "commercial": self = .commercial
-                default: self = .unknown
-                }
-            } else if let typeDict = try? container.decode([String: String].self),
-                      let nameValue = typeDict["name"]?.lowercased() {
-                switch nameValue {
-                case "government": self = .government
-                case "commercial": self = .commercial
-                default: self = .unknown
-                }
-            } else {
-                self = .unknown
-            }
-        }
-
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.singleValueContainer()
-            switch self {
-            case .government:
-                try container.encode("government")
-            case .commercial:
-                try container.encode("commercial")
-            case .unknown:
-                try container.encode("unknown")
-            }
-        }
-    }
+    let abbrev: String?
 }
 
-// MARK: - Rocket Configuration
-struct RocketConfiguration: Codable {
-    let id: Int
-    let name: String
-    let full_name: String
-}
-
-// MARK: - Rocket
-struct Rocket: Codable {
-    let id: Int
-    let configuration: RocketConfiguration
-}
-
-// MARK: - Mission
-struct Mission: Codable {
-    let id: Int?
-    let name: String?
-    let description: String?
-    let orbit: Orbit?
-}
-
-// MARK: - Orbit
-struct Orbit: Codable {
-    let id: Int
-    let name: String
-}
-
-// MARK: - Location
-struct Location: Codable {
-    let id: Int
-    let name: String
-}
-
-// MARK: - Pad
-struct Pad: Codable {
-    let id: Int
-    let name: String
-    let wiki_url: String?
-    let location: Location
-}
-
-// MARK: - Image Info
-struct ImageInfo: Codable {
-    let id: Int
+struct ImageWrapper: Codable {
     let image_url: String
 }
 
-/// Represents a single launch from SpaceDevs (in “list” mode).
-struct SpaceDevsLaunch: Codable {
-    // Basic fields
-    let id: String
+struct RocketWrapper: Codable {
+    let configuration: RocketConfiguration
+}
+
+struct RocketConfiguration: Codable {
+    let full_name: String
+}
+
+struct ProviderWrapper: Codable {
     let name: String
-    let net: String
+}
 
-    // Possibly-nested objects
-    let status: APILaunchStatus?
-    let launch_service_provider: LaunchServiceProvider?
-    let rocket: Rocket?
-    let mission: Mission?
-    let pad: Pad?
+struct PadWrapper: Codable {
+    let location: PadLocationWrapper
+    let wiki_url: String?
+}
 
-    // If “image” might be an object or a simple string
-    let imageObject: ImageInfo?
-    let imageString: String?
+struct PadLocationWrapper: Codable {
+    let name: String
+}
 
-    // Flattened fields in list mode
-    let status_name: String?
-    let rocket_name: String?
-    let agency_name: String?
-    let pad_name: String?
+struct MissionWrapper: Codable {
+    let description: String
+    let orbit: OrbitWrapper?
+}
 
-    enum CodingKeys: String, CodingKey {
-        case id, name, net
-        case status
-        case launch_service_provider
-        case rocket
-        case mission
-        case pad
-        case image  // can be object or string
-        case status_name, rocket_name, agency_name, pad_name
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        // Required
-        id = try container.decode(String.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        net = try container.decode(String.self, forKey: .net)
-
-        // Nested objects
-        status = try? container.decode(APILaunchStatus.self, forKey: .status)
-        launch_service_provider = try? container.decode(LaunchServiceProvider.self, forKey: .launch_service_provider)
-        rocket = try? container.decode(Rocket.self, forKey: .rocket)
-        mission = try? container.decode(Mission.self, forKey: .mission)
-        pad = try? container.decode(Pad.self, forKey: .pad)
-
-        // Attempt to decode “image” as an object, else fallback to string
-        if let imageObj = try? container.decode(ImageInfo.self, forKey: .image) {
-            imageObject = imageObj
-            imageString = nil
-        } else {
-            imageObject = nil
-            imageString = try? container.decode(String.self, forKey: .image)
-        }
-
-        // Flattened fields
-        status_name = try? container.decode(String.self, forKey: .status_name)
-        rocket_name = try? container.decode(String.self, forKey: .rocket_name)
-        agency_name = try? container.decode(String.self, forKey: .agency_name)
-        pad_name = try? container.decode(String.self, forKey: .pad_name)
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        try container.encode(id, forKey: .id)
-        try container.encode(name, forKey: .name)
-        try container.encode(net, forKey: .net)
-        try container.encodeIfPresent(status, forKey: .status)
-        try container.encodeIfPresent(launch_service_provider, forKey: .launch_service_provider)
-        try container.encodeIfPresent(rocket, forKey: .rocket)
-        try container.encodeIfPresent(mission, forKey: .mission)
-        try container.encodeIfPresent(pad, forKey: .pad)
-
-        if let imageObj = imageObject {
-            try container.encode(imageObj, forKey: .image)
-        } else if let imageStr = imageString {
-            try container.encode(imageStr, forKey: .image)
-        }
-        
-        try container.encodeIfPresent(status_name, forKey: .status_name)
-        try container.encodeIfPresent(rocket_name, forKey: .rocket_name)
-        try container.encodeIfPresent(agency_name, forKey: .agency_name)
-        try container.encodeIfPresent(pad_name, forKey: .pad_name)
-    }
+struct OrbitWrapper: Codable {
+    let name: String
 }
 
 // MARK: - Launch Enrichment
+/// If you want to store AI-generated text
 struct LaunchEnrichment: Codable {
-    let shortDescription: String?
-    let detailedDescription: String?
-    let status: LaunchStatus?
+    let shortDescription: String
+    let detailedDescription: String
+}
+
+// MARK: - SpaceDevsLaunch → Launch Conversion
+extension SpaceDevsLaunch {
+    /// Maps the API model to your app’s Launch model.
+    /// Returns nil if the launch date is in the past or can't be parsed.
+    func toAppLaunch(withEnrichment enrichment: LaunchEnrichment? = nil) -> Launch? {
+        // Parse date
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime]
+        guard let launchDate = dateFormatter.date(from: net),
+              launchDate > Date() else {
+            return nil
+        }
+        
+        // Hard-coded status for example. Or parse `status.name`
+        let mappedStatus: LaunchStatus = .upcoming
+        
+        // Build local fields
+        let rocketName = rocket?.configuration.full_name ?? "N/A"
+        
+        // Extract only the mission name:
+        let missionName: String = {
+            let components = name.split(separator: "|")
+            if components.count >= 2 {
+                return components[1].trimmingCharacters(in: .whitespaces)
+            } else {
+                return name
+            }
+        }()
+        
+        let providerName: String = {
+            if let prov = launch_service_provider?.name, !prov.isEmpty {
+                return prov
+            } else {
+                return missionName
+            }
+        }()
+        
+        let location = pad?.location.name ?? "N/A"
+        
+        // If you have an existing mission description from the API
+        let missionDesc = mission?.description
+        
+        // Merge with optional enrichment if present
+        let shortDesc = enrichment?.shortDescription ?? missionDesc ?? "No description available"
+        let detailedDesc = enrichment?.detailedDescription ?? missionDesc ?? "No detailed description available"
+        
+        let orbitName = mission?.orbit?.name
+        
+        // Build a local Launch object using missionName instead of the full name
+        return Launch(
+            id: id,
+            name: missionName,  // Only the mission name is displayed
+            net: launchDate,
+            status: mappedStatus,
+            rocket: rocketName,
+            provider: providerName,
+            location: location,
+            imageURL: image?.image_url,
+            shortDescription: shortDesc,
+            detailedDescription: detailedDesc,
+            orbit: orbitName,
+            wikiURL: pad?.wiki_url,
+            twitterURL: buildTwitterURL(),
+            badges: determineBadges()
+        )
+    }
+    
+    private func determineBadges() -> [Badge]? {
+        var badges: [Badge] = []
+        
+        if let desc = mission?.description.lowercased() {
+            if desc.contains("maiden") || desc.contains("first") {
+                badges.append(.firstLaunch)
+            }
+            if desc.contains("historic") || desc.contains("notable") {
+                badges.append(.notable)
+            }
+        }
+        
+        if let provider = launch_service_provider?.name.lowercased() {
+            if provider.contains("nasa") || provider.contains("spacex") || provider.contains("blue origin") {
+                if !badges.contains(.notable) {
+                    badges.append(.notable)
+                }
+            }
+        }
+        
+        if let rocketName = rocket?.configuration.full_name.lowercased() {
+            if rocketName.contains("starship") {
+                if !badges.contains(.notable) {
+                    badges.append(.notable)
+                }
+            }
+        }
+        
+        return badges.isEmpty ? nil : badges
+    }
+    
+    private func buildTwitterURL() -> String? {
+        guard let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return nil
+        }
+        return "https://twitter.com/search?q=\(encodedName)"
+    }
 }

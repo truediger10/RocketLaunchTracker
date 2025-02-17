@@ -44,6 +44,8 @@ struct Config {
         do {
             self.openAIAPIKey = try getEnvironmentVariable("OPENAI_API_KEY")
             self.spaceDevsAPIKey = try getEnvironmentVariable("SPACEDEVS_API_KEY")
+            print("ℹ️ Actual openAIAPIKey: \(openAIAPIKey)")
+            print("ℹ️ Actual spaceDevsAPIKey: \(spaceDevsAPIKey)")
         } catch {
             #if DEBUG
             print("⚠️ Using debug API keys: \(error.localizedDescription)")

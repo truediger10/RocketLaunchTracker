@@ -1,5 +1,3 @@
-// Views/LaunchList/FilterView.swift
-
 import SwiftUI
 
 struct FilterView: View {
@@ -23,7 +21,7 @@ struct FilterView: View {
                 Text("Failed").tag(LaunchStatus.failed as LaunchStatus?)
                 Text("Delayed").tag(LaunchStatus.delayed as LaunchStatus?)
                 Text("Cancelled").tag(LaunchStatus.cancelled as LaunchStatus?)
-                Text("Unknown").tag(LaunchStatus.unknown as LaunchStatus?) // Added Unknown option
+                Text("Unknown").tag(LaunchStatus.unknown as LaunchStatus?)
             }
             
             TextField("Provider", text: $selectedProvider)
@@ -45,8 +43,7 @@ struct FilterView: View {
     }
     
     private func applyFilters() {
-        // Ensure that startDate is before endDate
-        let dateRange = startDate <= endDate ? startDate...endDate : endDate...startDate
+        let dateRange = (startDate <= endDate) ? startDate...endDate : endDate...startDate
         
         criteria = LaunchCriteria(
             status: selectedStatus,

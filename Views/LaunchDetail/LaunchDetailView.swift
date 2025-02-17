@@ -1,3 +1,4 @@
+// File: LaunchDetailView.swift – Location: Views/LaunchDetail
 import SwiftUI
 
 struct LaunchDetailView: View {
@@ -25,19 +26,29 @@ struct LaunchDetailView: View {
         }
         .background(ThemeColors.spaceBlack)
         .ignoresSafeArea(edges: .top)
+        // Close button in the upper-right
         .overlay(alignment: .topTrailing) { closeButton }
+        // Safari sheet for external links
         .sheet(isPresented: $showSafariView) {
             if let url = safariURL {
                 SafariView(url: url)
             }
         }
+        // Allow interactive dismissal (swipe down)
+        .interactiveDismissDisabled(false)
     }
     
+    // MARK: - Hero Section (Image)
     private var heroSection: some View {
         ZStack(alignment: .topLeading) {
-            LaunchImageView(imageURL: launch.imageURL, height: UIScreen.main.bounds.width * Constants.imageAspectRatio) {
-                withAnimation { imageLoaded = true }
+            LaunchImageView(
+                imageURL: launch.imageURL,
+                height: UIScreen.main.bounds.width * Constants.imageAspectRatio
+            ) {
+                imageLoaded = true
             }
+            
+            // Dark gradient overlay
             LinearGradient(
                 gradient: Gradient(colors: [
                     .clear,
@@ -49,53 +60,41 @@ struct LaunchDetailView: View {
                 endPoint: .bottom
             )
             .frame(height: UIScreen.main.bounds.width * Constants.imageAspectRatio)
-            heroOverlayContent
         }
     }
     
-    private var heroOverlayContent: some View {
-        VStack(alignment: .leading) {
-            // Display the provider from the mapped data
+    // MARK: - Content Section
+    private var contentSection: some View {
+        VStack(alignment: .leading, spacing: Constants.padding) {
+            // Provider below the mission name
             Text(launch.provider)
                 .font(.headline)
                 .foregroundColor(ThemeColors.brightYellow)
-                .padding([.leading, .top], Constants.padding)
             
-            LaunchStatusTag(status: launch.status)
-                .padding(.leading, Constants.padding)
-            
-            Spacer()
-            
-            Text(launch.timeUntilLaunch)
-                .font(.subheadline)
-                .foregroundColor(ThemeColors.almostWhite)
-                .padding([.leading, .bottom], Constants.padding)
-        }
-    }
-    
-    private var contentSection: some View {
-        VStack(alignment: .leading, spacing: Constants.padding) {
+            // Mission Name at the top
             Text(launch.name)
                 .font(.title2.bold())
                 .foregroundColor(ThemeColors.almostWhite)
                 .fixedSize(horizontal: false, vertical: true)
             
-            Divider()
-                .background(ThemeColors.darkGray)
+            Divider().background(ThemeColors.darkGray)
             
+            // Rocket, Date, Location, Orbit, Time, etc.
             VStack(alignment: .leading, spacing: 12) {
+                DetailItem(label: "Rocket", value: launch.rocketName, icon: "paperplane.fill")
                 DetailItem(label: "Launch Date", value: launch.formattedDate, icon: "calendar.day.timeline.left")
                 DetailItem(label: "Location", value: launch.location, icon: "mappin.and.ellipse")
-                DetailItem(label: "Rocket", value: launch.rocketName, icon: "paperplane.fill")
+                
                 if let orbit = launch.orbit {
                     DetailItem(label: "Orbit", value: orbit, icon: "globe.americas.fill")
                 }
+                
                 DetailItem(label: "Time Until Launch", value: launch.timeUntilLaunch, icon: "timer")
             }
             
-            Divider()
-                .background(ThemeColors.darkGray)
+            Divider().background(ThemeColors.darkGray)
             
+            // Mission Overview
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Mission Overview")
@@ -103,7 +102,9 @@ struct LaunchDetailView: View {
                         .foregroundColor(ThemeColors.almostWhite)
                     Spacer()
                     Button {
-                        withAnimation { showFullMissionOverview.toggle() }
+                        withAnimation(.easeInOut) {
+                            showFullMissionOverview.toggle()
+                        }
                     } label: {
                         HStack(spacing: 4) {
                             Text(showFullMissionOverview ? "Show Less" : "Show More")
@@ -121,6 +122,7 @@ struct LaunchDetailView: View {
                     .animation(.easeInOut, value: showFullMissionOverview)
             }
             
+            // External link (Wiki, etc.)
             if let wiki = launch.wikiURL, let url = URL(string: wiki) {
                 Button {
                     safariURL = url
@@ -139,19 +141,11 @@ struct LaunchDetailView: View {
                     .cornerRadius(8)
                 }
             }
-            
-            if let badges = launch.badges, !badges.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(badges) { badge in
-                        BadgeView(badge: badge)
-                    }
-                }
-                .padding(.top, Constants.padding)
-            }
         }
         .padding(Constants.padding)
     }
     
+    // MARK: - Close Button
     private var closeButton: some View {
         Button {
             dismiss()
